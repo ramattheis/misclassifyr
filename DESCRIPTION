@@ -1,0 +1,15 @@
+Package: misclassifyr
+Title: Estimation and inference for misclassification models. 
+Version: 0.0.0.9000
+Authors@R: 
+    person("Ross", "Mattheis", , "ramattheis@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-3709-2271"))
+Description: This package provides tools for estimation and inference of simple misclassification models, as described in Mattheis (2024). 
+License: `use_mit_license()`
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.0.0
+LinkingTo: 
+    Rcpp
+Imports: 
+    Rcpp
