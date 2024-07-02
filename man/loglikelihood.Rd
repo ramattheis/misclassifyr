@@ -14,7 +14,6 @@ the log likelihood of the data given theta, i.e. Pi and Delta.
 }
 \description{
 Longer description of what it does...
-It's assumed that\code{tab}, \code{J}, and \code{K} are defined in the environment.
 }
 \details{
 some details.
