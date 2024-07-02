@@ -1,7 +1,6 @@
 #' Returns the log likelihood of the data.
 #'
 #' Longer description of what it does...
-#' It's assumed that`tab`, `J`, and `K` are defined in the environment.
 #'
 #' @param theta A numeric vector of length  Jx(J^2+K) describing the joint distribution of the data.
 #' @return the log likelihood of the data given theta, i.e. Pi and Delta.
@@ -15,10 +14,15 @@ loglikelihood = function(theta){
 
   # Importing tab, J, K, and lambda from the shared environment
   misclassifyr_env = get(".misclassifyr_env", envir = asNamespace("misclassifyr"))
+  if(!exists("tab", envir = misclassifyr_env)){stop("Error: `tab` missing from `misclassifyr_env`")}
   tab = misclassifyr_env$tab
+  if(!exists("J", envir = misclassifyr_env)){stop("Error: `J` missing from `misclassifyr_env`")}
   J = misclassifyr_env$J
+  if(!exists("K", envir = misclassifyr_env)){stop("Error: `K` missing from `misclassifyr_env`")}
   K = misclassifyr_env$K
+  if(!exists("lambda_pos", envir = misclassifyr_env)){stop("Error: `lambda_pos` missing from `misclassifyr_env`")}
   lambda_pos = misclassifyr_env$lambda_pos
+  if(!exists("lambda_dd", envir = misclassifyr_env)){stop("Error: `lambda_dd` missing from `misclassifyr_env`")}
   lambda_dd = misclassifyr_env$lambda_dd
 
   # Building Pi

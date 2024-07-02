@@ -14,6 +14,7 @@ model_to_Delta_NP = function(psi){
 
   # Importing J from the shared environment
   misclassifyr_env = get(".misclassifyr_env", envir = asNamespace("misclassifyr"))
+  if(!exists("J", envir = misclassifyr_env)){stop("Error: `J` missing from `misclassifyr_env`")}
   J = misclassifyr_env$J
 
 

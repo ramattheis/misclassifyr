@@ -17,6 +17,7 @@ model_to_Pi_NP = function(phi){
 
   # Importing J, K from the shared environment
   misclassifyr_env = get(".misclassifyr_env", envir = asNamespace("misclassifyr"))
+  if(!exists("J", envir = misclassifyr_env)){stop("Error: `J` missing from `misclassifyr_env`")}
   J = misclassifyr_env$J
 
   # Building Pi
