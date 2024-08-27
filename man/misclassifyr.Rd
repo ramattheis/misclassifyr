@@ -8,38 +8,53 @@ misclassifyr(
   tab,
   J,
   K,
-  model_to_Pi,
-  model_to_Delta,
+  model_to_Pi = "model_to_Pi_NP",
+  model_to_Delta = "model_to_Delta_NP_ind",
   phi_0 = NA,
   psi_0 = NA,
-  split_eta = NA,
+  X_names = NA,
+  Y_names = NA,
+  W_names = NA,
+  estimate_beta = F,
+  estimate_betas = F,
+  X_vals = NA,
+  Y_vals = NA,
   lambda_pos = NA,
   lambda_dd = NA,
-  optim_maxit = 1000,
+  optim_maxit = 10000,
   optim_tol = 1e-09,
   optim_stepsize = NA,
   check_stability = F,
   stability_sd = 0.1,
-  estimation_options = NA,
-  formula = NA
+  cores = 1
 )
 }
 \arguments{
 \item{tab}{A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should be numeric with names \code{Y1}, \code{Y2}, \code{X}, and \code{n} where \code{Y1} and \code{Y2} take each value between \code{1} and \code{J}, \code{X} takes each value between \code{1} and \code{K}, and}
 
-\item{J}{An integer corresponding to the number of unique values of \code{Y1} and \code{Y2}.}
+\item{J}{An integer or list corresponding to the number of unique values of \code{Y1} and \code{Y2}.}
 
-\item{K}{An integer less than or equal to \code{J} corresponding to the number of unique values of \code{X}.}
+\item{K}{An integer or list corresponding to the number of unique values of \code{X}.}
 
-\item{model_to_Pi}{A function mapping the parameters of a model for the joint distribution to the joint distribution \Pi}
+\item{model_to_Pi}{A function or list of functions mapping the parameters of a model for the joint distribution to the joint distribution \Pi}
 
-\item{model_to_Delta}{A function mapping the parameters of a model to the conditional distribution Y1, Y2 | Y*, \Delta}
+\item{model_to_Delta}{A function or list of functions mapping the parameters of a model to the conditional distribution Y1, Y2 | Y*, \Delta}
 
-\item{phi_0}{A numeric vector providing the starting location for optimization for the argument to model_to_Pi.}
+\item{phi_0}{A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Pi.}
 
-\item{psi_0}{A numeric vector providing the starting location for optimization for the argument to model_to_Delta.}
+\item{psi_0}{A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Delta.}
 
-\item{split_eta}{An integer indicating where to split the vector \code{eta} in \code{phi} and \code{psi}, the arguments to \code{model_to_Pi} and \code{model_to_Delta} respectively.}
+\item{X_names}{A character vector or list corresponding to the values of the regressor X.}
+
+\item{Y_names}{A character vector or list corresponding to the values of the outcome Y.}
+
+\item{W_names}{A character vector corresponding to the values of the control W in each cell.}
+
+\item{estimate_beta}{A logical value indicating whether to regress Y on X.}
+
+\item{X_vals}{A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.}
+
+\item{Y_vals}{A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.}
 
 \item{lambda_pos}{scales the penalty for violations of positivity (i.e. all probabilities should be positive).}
 
@@ -53,13 +68,13 @@ misclassifyr(
 
 \item{check_stability}{A logical value indicating whether to perform a stability test for the numerical optimizer.}
 
-\item{estimation_options}{Options for downstream estimates.}
+\item{cores}{An integer for the number of CPUs available for parallel processing.}
 
-\item{formula}{A regression formula}
+\item{split_eta}{An integer or list indicating where to split the vector \code{eta} in \code{phi} and \code{psi}, the arguments to \code{model_to_Pi} and \code{model_to_Delta} respectively.}
 }
 \value{
 An object that includes estimates and information from the estimation process
 }
 \description{
-This package provides a menu of options for estimation and inference of misclassification models in which the analyst has access to two noisy measures, \code{Y1} and \code{Y2} of a latent outcome \verb{Y*}, a correctly measured covariate \code{X}, and discrete controls \code{W}.
+This function provides a menu of options for estimation and inference of misclassification models in which the analyst has access to two noisy measures, \code{Y1} and \code{Y2} of a latent outcome \verb{Y*}, a correctly measured covariate \code{X}, and discrete controls \code{W}.
 }

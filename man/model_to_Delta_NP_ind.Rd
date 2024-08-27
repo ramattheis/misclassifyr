@@ -10,16 +10,8 @@ model_to_Delta_NP_ind(psi)
 \item{psi}{A numeric vector of length 2xJx(J-1) containing Delta^{(1)} and Delta^{(2)}.}
 }
 \value{
-something
+A numeric vector corresponding to the (JxJ)xJ matrix Delta. d
 }
 \description{
-Longer description of what it does...
-}
-\details{
-some details.
-}
-\examples{
-\dontrun{
-some example code # Should return something
-}
+Maps model parameters, psi, to the conditional distribution Y1, Y2 | Y*, Delta.
 }

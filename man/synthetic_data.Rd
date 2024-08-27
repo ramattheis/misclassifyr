@@ -7,6 +7,7 @@
 synthetic_data(
   J = 5,
   K = 5,
+  I = 2,
   sample_size = 1e+06,
   dgp_delta = "Nonparametric, independent, strong diagonal",
   dgp_pi = "Exponential"
@@ -16,6 +17,8 @@ synthetic_data(
 \item{J}{An integer indicating the dimension of Y.}
 
 \item{K}{An integer indicating the dimension of X.}
+
+\item{I}{An integer indicating the dimension of W.}
 
 \item{sample_size}{An integer denoting the number of synthetic observations.}
 

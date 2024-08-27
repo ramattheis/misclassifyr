@@ -13,13 +13,5 @@ loglikelihood(theta)
 the log likelihood of the data given theta, i.e. Pi and Delta.
 }
 \description{
-Longer description of what it does...
-}
-\details{
-some details.
-}
-\examples{
-\dontrun{
-some example code # Should return something
-}
+Returns the log likelihood of the data.
 }

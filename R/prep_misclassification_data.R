@@ -1,6 +1,6 @@
 #' prep_misclassification_data
 #'
-#' This package provides a menu of options for estimation and inference of misclassification models in which the analyst has access to two noisy measures, `Y1` and `Y2` of a latent outcome `Y*`, a correctly measured covariate `X`, and discrete controls `W`.
+#' This function tabulates data and generates metadata in a format to be used with the misclassifyr() function.
 #'
 #' @param data A data.frame containing the outcome variable,
 #' @param outcome_1 A character string denoting the variable in the dataframe to be used as the first measure of an outcome, Y_1.
@@ -8,7 +8,7 @@
 #' @param regressor A character string denoting the variable in the dataframe to be used as a regressor, X.
 #' @param controls A character string or vector of character strings denoting the variable/variables to be used as non-parametric controls, W.
 #' @param weights A character string denoting a variable containing individual level weights
-#' @param record_vals A logical value indicating whether to record the unique values of the outcomes and the regressor.
+#' @param record_vals A logical value indicating whether to record the unique values of the outcomes and the regressor. If record_vals = F, you likely want to order the data by the regressor and outcomes before applying prep_misclassification_data.
 #' @return A list of objects including tabulated data to be used in misclassifyr()
 #' @export
 prep_misclassification_data <- function(
@@ -99,6 +99,11 @@ prep_misclassification_data <- function(
   #------------------------------------------------------------
   # Tabulating
   #------------------------------------------------------------
+
+  # First, ordering data by X, Y1, Y2 if record_vals = T
+  if(record_vals){
+    data = data[order(data$X,data$Y1,data$Y2),]
+  }
 
   # Defining a function to tabulate one cell of data
   tabulate = function(cell){

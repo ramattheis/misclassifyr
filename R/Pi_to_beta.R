@@ -1,17 +1,10 @@
 #' Maps the joint distribution, Pi, of X and Y* to a scalar, beta
 #'
-#' Longer description of what it does...
-#'
 #' @param Pi A numeric vector or list of numeric vectors containing the elements of Pi.
 #' @param X_vals A numeric vector or a list of numeric vectors representing the scalar values associated with X.
 #' @param Y_vals A numeric vector or a list of numeric vectors representing the scalar values associated with Y.
 #' @param W_weights A numeric vector representing the sample size of each control cell.
 #' @return A scalar equal to beta.
-#' @details some details.
-#' @examples
-#' \dontrun{
-#' some example code # Should return something
-#' }
 #' @export
 Pi_to_beta = function(Pi, X_vals, Y_vals, W_weights){
 
@@ -27,6 +20,7 @@ Pi_to_beta = function(Pi, X_vals, Y_vals, W_weights){
   #------------------------------------------------------------
 
   make_moments = function(Pi_, X_vals_, Y_vals_){
+
     # Converting Pi_ to a matrix
     Pi_ = matrix(Pi_, nrow = J)
 
@@ -38,6 +32,7 @@ Pi_to_beta = function(Pi, X_vals, Y_vals, W_weights){
 
     # Returning moments as a row of a dataframe
     return(as.data.frame(cbind(E_X,E_Y,E_XX,E_XY)))
+
   }
 
 
@@ -46,6 +41,7 @@ Pi_to_beta = function(Pi, X_vals, Y_vals, W_weights){
   #------------------------------------------------------------
 
   if(is.list(Pi)){
+
     # Computing moments within each cell
     moments = do.call(rbind, lapply(seq_along(Pi), function(j) make_moments(Pi[[j]],X_vals[[j]],Y_vals[[j]])))
 
@@ -55,7 +51,9 @@ Pi_to_beta = function(Pi, X_vals, Y_vals, W_weights){
     # Computing Cov(X,Y) by the law of total covariance
     Cov_XY = sum(W_weights* (moments$E_XY - moments$E_X*moments$E_Y)) +
       sum(moments$E_Y*moments$E_X*W_weights) - sum(moments$E_Y*W_weights)*sum(moments$E_X*W_weights)
+
   } else {
+
     # Computing moments for the full population
     moments = make_moments(Pi,X_vals,Y_vals)
 
@@ -64,6 +62,7 @@ Pi_to_beta = function(Pi, X_vals, Y_vals, W_weights){
 
     # Computing Cov(X,Y)
     Cov_XY = moments$E_XY - moments$E_X*moments$E_Y
+
   }
 
   # Returning beta

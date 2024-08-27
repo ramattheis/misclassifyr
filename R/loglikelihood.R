@@ -1,14 +1,7 @@
 #' Returns the log likelihood of the data.
 #'
-#' Longer description of what it does...
-#'
 #' @param theta A numeric vector of length  Jx(J^2+K) describing the joint distribution of the data.
 #' @return the log likelihood of the data given theta, i.e. Pi and Delta.
-#' @details some details.
-#' @examples
-#' \dontrun{
-#' some example code # Should return something
-#' }
 #' @export
 loglikelihood = function(theta){
 

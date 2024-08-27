@@ -1,17 +1,9 @@
 #' Maps model parameters, phi, to the joint distribution of X and Y*, Pi.
 #'
-#' Longer description of what it does...
-#'
-#'
 #' @param phi A numeric vector.
 #' @param J An integer corresponding to the dimension of Y.
 #' @param K An integer corresponding to the dimension of X.
-#' @return something
-#' @details some details.
-#' @examples
-#' \dontrun{
-#' some example code # Should return something
-#' }
+#' @return A numeric vector corresponding to the JxK matrix Pi
 #' @export
 model_to_Pi_NP = function(phi){
 
@@ -26,6 +18,7 @@ model_to_Pi_NP = function(phi){
   Pi = matrix(phi,nrow = J)   # Converting to matrix, Y* rows, X cols
 
   return(c(Pi))
+
 }
 
 # Adding a name as an attribute

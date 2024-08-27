@@ -14,16 +14,8 @@ model_to_Pi_NP(phi)
 \item{K}{An integer corresponding to the dimension of X.}
 }
 \value{
-something
+A numeric vector corresponding to the JxK matrix Pi
 }
 \description{
-Longer description of what it does...
-}
-\details{
-some details.
-}
-\examples{
-\dontrun{
-some example code # Should return something
-}
+Maps model parameters, phi, to the joint distribution of X and Y*, Pi.
 }

@@ -1,15 +1,7 @@
 #' Maps model parameters, psi, to the conditional distribution Y1, Y2 | Y*, Delta.
 #'
-#' Longer description of what it does...
-#'
-#'
 #' @param psi A numeric vector of length 2xJx(J-1) containing Delta^{(1)} and Delta^{(2)}.
-#' @return something
-#' @details some details.
-#' @examples
-#' \dontrun{
-#' some example code # Should return something
-#' }
+#' @return A numeric vector corresponding to the (JxJ)xJ matrix Delta. d
 #' @export
 model_to_Delta_NP_ind = function(psi){
 
@@ -34,6 +26,7 @@ model_to_Delta_NP_ind = function(psi){
   Delta = do.call(cbind, Delta)
 
   return(c(Delta))
+
 }
 
 # Adding a name as an attribute
