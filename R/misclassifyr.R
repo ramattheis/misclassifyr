@@ -252,7 +252,7 @@ misclassifyr <- function(
           as.data.frame()
         tab_xy = tab_xy[order(tab_xy$Y1, tab_xy$X),]
         tab_xy$p = tab_xy$n/sum(tab_xy$n)
-        phi_0 = log(tab_xy$p[1:(J*K-1)])
+        phi_0 = softlog(tab_xy$p[1:(J*K-1)])
       }
     }
 
