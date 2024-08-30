@@ -2,14 +2,12 @@
 #'
 #' @param psi A numeric vector containing Pi, Delta^{(1)}, and Delta^{(2)}.
 #' @return A numeric vector corresponding to the (JxJ)xJ matrix Delta.
+#' @keywords internal
 #' @export
 model_to_Delta_NP = function(psi){
 
-  # Importing J from the shared environment
-  misclassifyr_env = get(".misclassifyr_env", envir = asNamespace("misclassifyr"))
-  if(!exists("J", envir = misclassifyr_env)){stop("Error: `J` missing from `misclassifyr_env`")}
-  J = misclassifyr_env$J
-
+  # J is a deterministic function of psi for model_to_Delta_NP
+  J = as.integer(length(psi)^(1/3))
 
   # Exponentiating to return to levels (psi in logs for numerical performance)
   psi = exp(psi)

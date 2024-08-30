@@ -109,7 +109,7 @@ synthetic_data = function(J=5,
     Y1 = rep(sapply(1:J, function(i) rep(i,K)),J)
     Y2 = c(sapply(1:J, function(i) rep(i,J*K)))
     tab = cbind(X,Y1,Y2) |> as.data.frame()
-    tab$n = rmultinom(1, sample_size, prob = c(likelihood))
+    tab$n = rmultinom(1, sample_size, prob = c(likelihood)) |> as.numeric()
 
     #------------------------------------------------------------
     # Returning

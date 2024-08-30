@@ -1,5 +1,6 @@
-#' Maps the joint distribution, Pi, of X and Y* to a scalar, beta
+#' Computes variance of beta_hat
 #'
+#' @param Pi_cov A numeric vector or list of numeric vectors containing the elements of the covariance of Pi.
 #' @param Pi A numeric vector or list of numeric vectors containing the elements of Pi.
 #' @param X_vals A numeric vector or a list of numeric vectors representing the scalar values associated with X.
 #' @param Y_vals A numeric vector or a list of numeric vectors representing the scalar values associated with Y.
@@ -8,18 +9,21 @@
 #' @export
 Pi_to_beta = function(Pi, X_vals, Y_vals, W_weights){
 
+  # Importing J from the shared environment
+  misclassifyr_env = get(".misclassifyr_env", envir = asNamespace("misclassifyr"))
+  if(!exists("J", envir = misclassifyr_env)){stop("Error: `J` missing from `misclassifyr_env`")}
+  J = misclassifyr_env$J
+  if(!exists("K", envir = misclassifyr_env)){stop("Error: `K` missing from `misclassifyr_env`")}
+  K = misclassifyr_env$K
+
   #------------------------------------------------------------
   # Defining a function to compute moments X, Y, XY, and XX w/n cells
   #------------------------------------------------------------
 
   make_moments = function(Pi_, X_vals_, Y_vals_){
 
-    # Making Pi_ non-negative
-    Pi_[Pi_ < 0] = 0
-    Pi_ = Pi_/sum(Pi_)
-
     # Converting Pi_ to a matrix
-    Pi_ = matrix(Pi_, nrow = length(Y_vals_))
+    Pi_ = matrix(Pi_, nrow = J)
 
     # Computing the expected value of X, Y, XX, and XY
     E_X = sum(Pi_ %*% diag(X_vals_))
@@ -37,7 +41,7 @@ Pi_to_beta = function(Pi, X_vals, Y_vals, W_weights){
   # Computing and returning beta
   #------------------------------------------------------------
 
-  if(class(Pi) == "list"){
+  if(is.list(Pi)){
 
     # Computing moments within each cell
     moments = do.call(rbind, lapply(seq_along(Pi), function(j) make_moments(Pi[[j]],X_vals[[j]],Y_vals[[j]])))
@@ -66,4 +70,3 @@ Pi_to_beta = function(Pi, X_vals, Y_vals, W_weights){
   return(Cov_XY/Var_X)
 
 }
-

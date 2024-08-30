@@ -1,22 +1,13 @@
 #' Maps model parameters, psi, to the joint distribution of the data, theta.
 #'
-#' Longer description of what it does...
-#'
-#'
 #' @param psi A numeric vector of length 2(J-1)+2J corresponding to the column and row scales of the record linkage.
 #' @return something
-#' @details some details.
-#' @examples
-#' \dontrun{
-#' some example code # Should return something
-#' }
+#' @keywords internal
 #' @export
 model_to_Delta_RL_ind = function(psi){
 
-  # Importing J from the shared environment
-  misclassifyr_env = get(".misclassifyr_env", envir = asNamespace("misclassifyr"))
-  if(!exists("J", envir = misclassifyr_env)){stop("Error: `J` missing from `misclassifyr_env`")}
-  J = misclassifyr_env$J
+  # J is a deterministic function of psi for model_to_Delta_RL_ind
+  J = as.integer((length(psi) + 2)/4)
 
   # Exponentiating to return to levels (psi in logs for numerical performance)
   psi = exp(psi)

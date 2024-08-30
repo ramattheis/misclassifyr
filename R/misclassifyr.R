@@ -2,6 +2,8 @@
 #'
 #' This function provides a menu of options for estimation and inference of misclassification models in which the analyst has access to two noisy measures, `Y1` and `Y2` of a latent outcome `Y*`, a correctly measured covariate `X`, and discrete controls `W`.
 #'
+#' @import parallel numDeriv pracma
+#'
 #' @param tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should be numeric with names `Y1`, `Y2`, `X`, and `n` where `Y1` and `Y2` take each value between `1` and `J`, `X` takes each value between `1` and `K`, and
 #' @param J An integer or list corresponding to the number of unique values of `Y1` and `Y2`.
 #' @param K An integer or list corresponding to the number of unique values of `X`.
@@ -14,14 +16,12 @@
 #' @param Y_names A character vector or list corresponding to the values of the outcome Y.
 #' @param W_names A character vector corresponding to the values of the control W in each cell.
 #' @param estimate_beta A logical value indicating whether to regress Y on X.
+#' @param estimate_betas A logical value indicating whether to regress Y on X within covariate cells.
 #' @param X_vals A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.
 #' @param Y_vals A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.
-#' @param lambda_pos scales the penalty for violations of positivity (i.e. all probabilities should be positive).
-#' @param lambda_dd scales the penalty for violations of diagonal dominance.
 #' @param optim_maxit An integer for the maximum number of iterations in numerical optimization, passed to `optim()`
 #' @param optim_tol A positive number defining convergence in numerical optimization, passed to `optim()`
-#' @param optim_stepsize A positive number for the step size in the numerical gradient, passed to `optim()`
-#' @param check_stability A logical value indicating whether to perform a stability test for the numerical optimizer.
+#' @param check_stability A logical value indicating whether to perform a more rigorous stability test for the numerical optimizer.
 #' @param cores An integer for the number of CPUs available for parallel processing.
 #' @return An object that includes estimates and information from the estimation process
 #' @export
@@ -40,11 +40,8 @@ misclassifyr <- function(
     estimate_betas = F,
     X_vals = NA,
     Y_vals = NA,
-    lambda_pos = NA,
-    lambda_dd = NA,
-    optim_maxit = 1e4,
+    optim_maxit = 1e5,
     optim_tol = 1e-9,
-    optim_stepsize = NA,
     check_stability = F,
     stability_sd = 0.1,
     cores = 1) {
@@ -54,37 +51,30 @@ misclassifyr <- function(
   # other input errors caught in MisclassMLE()
   #------------------------------------------------------------
 
-  if(!(is.integer(cores)|(is.numeric(cores) & abs(cores - floor(cores)) < 1e-9))){
+  if(!(is.integer(cores)|(is.numeric(cores) & abs(cores - floor(cores)) < 1e-16))){
     stop("Error: `cores` should be an integer.")
   } else if(parallel::detectCores() < cores){
     stop("Error: You requested more cores than appear available on your machine.")
   }
 
-  #------------------------------------------------------------
-  # Is there one model to estimate or many?
-  #------------------------------------------------------------
-
   #-----------------------------
   # Recording the types of each object
   #-----------------------------
-  input_types = c(typeof(tab),
-                  typeof(J),
-                  typeof(K),
-                  typeof(model_to_Pi),
-                  typeof(model_to_Delta),
-                  typeof(phi_0),
-                  typeof(psi_0),
-                  typeof(X_names),
-                  typeof(Y_names),
-                  typeof(X_vals),
-                  typeof(Y_vals),
-                  typeof(lambda_pos),
-                  typeof(lambda_dd),
-                  typeof(optim_maxit),
-                  typeof(optim_tol),
-                  typeof(optim_stepsize),
-                  typeof(check_stability),
-                  typeof(stability_sd)) |>
+  input_types = c(class(tab),
+                  class(J),
+                  class(K),
+                  class(model_to_Pi),
+                  class(model_to_Delta),
+                  class(phi_0),
+                  class(psi_0),
+                  class(X_names),
+                  class(Y_names),
+                  class(X_vals),
+                  class(Y_vals),
+                  class(optim_maxit),
+                  class(optim_tol),
+                  class(check_stability),
+                  class(stability_sd)) |>
     as.data.frame()
 
   colnames(input_types) = "type"
@@ -101,11 +91,8 @@ misclassifyr <- function(
     "Y_names",
     "X_vals",
     "Y_vals",
-    "lambda_pos",
-    "lambda_dd",
     "optim_maxit",
     "optim_tol",
-    "optim_stepsize",
     "check_stability",
     "stability_sd")
 
@@ -144,7 +131,7 @@ misclassifyr <- function(
   # Converting inputs to a list (or list of lists)  for MisclassMLE
   #-----------------------------
 
-  if(is.list(tab)){
+  if(class(tab) == "list"){
     # rebundling each list as a list of lists
     MisclassMLE_inputs = lapply(seq_along(tab), function(j) list(
       tab = tab[[j]],
@@ -159,11 +146,8 @@ misclassifyr <- function(
       W_names = W_names[j],
       X_vals = X_vals[[j]],
       Y_vals = Y_vals[[j]],
-      lambda_pos = lambda_pos[[j]],
-      lambda_dd = lambda_dd[[j]],
       optim_maxit = optim_maxit[[j]],
       optim_tol = optim_tol[[j]],
-      optim_stepsize = optim_stepsize[[j]],
       check_stability = check_stability[[j]],
       stability_sd = stability_sd[[j]]
       ))
@@ -183,11 +167,8 @@ misclassifyr <- function(
       W_names = W_names,
       X_vals = X_vals,
       Y_vals = Y_vals,
-      lambda_pos = lambda_pos,
-      lambda_dd = lambda_dd,
       optim_maxit = optim_maxit,
       optim_tol = optim_tol,
-      optim_stepsize = optim_stepsize,
       check_stability = check_stability,
       stability_sd = stability_sd
     )
@@ -219,7 +200,6 @@ misclassifyr <- function(
     lambda_dd = MisclassMLE_input$lambda_dd
     optim_maxit = MisclassMLE_input$optim_maxit
     optim_tol = MisclassMLE_input$optim_tol
-    optim_stepsize = MisclassMLE_input$optim_stepsize
     check_stability = MisclassMLE_input$check_stability
     stability_sd = MisclassMLE_input$stability_sd
 
@@ -240,12 +220,12 @@ misclassifyr <- function(
       stop("Error: `tab` should have four columns: `Y1`, `Y2`, `X`, and `n`.")
     }
     # I don't think I need this, but keeping it around for now
-    #if( typeof(tab$Y1) != "integer" | max(tab$Y1) > J | min(tab$Y1) < 1 |
-    #    typeof(tab$Y2) != "integer" | max(tab$Y2) > J | min(tab$Y2) < 1 |
-    #    typeof(tab$X)  != "integer" | max(tab$X)  > K | min(tab$X) < 1 ){
+    #if( class(tab$Y1) != "integer" | max(tab$Y1) > J | min(tab$Y1) < 1 |
+    #    class(tab$Y2) != "integer" | max(tab$Y2) > J | min(tab$Y2) < 1 |
+    #    class(tab$X)  != "integer" | max(tab$X)  > K | min(tab$X) < 1 ){
     #  stop("Error: `Y1`, `Y2`, and `X` should take integer values between `1` and `J` or `K`.")
     #}
-    if( !(typeof(tab$n) %in% c("double","integer") ) | min(tab$n) < 0){
+    if( !(class(tab$n) %in% c("double","numeric","integer") ) | min(tab$n) < 0){
       stop("Error: `n` should take non-negative integer values representing counts (or weighted counts) of unique values of `X`, `Y1`, and `Y2`")
     }
     # Throwing an error if no starting location is found for user-defined model_to_Pi or model_to_Delta
@@ -259,6 +239,11 @@ misclassifyr <- function(
     if( any(duplicated(tab[,c("X","Y1","Y2")])) | nrow(tab) != J^2*K){
       stop("Error: `tab` appears not to be balanced across X, Y1, and Y2.")
     }
+    # Throwing an error if model_to_Pi doesn't accept additional arguments
+    if(!("..." %in% names(formals(model_to_Pi)))){
+      stop("Error: `model_to_Pi` must accept additional arguments `...`.")
+    }
+
 
     #------------------------------------------------------------
     # Setting the starting location for optimization
@@ -267,7 +252,7 @@ misclassifyr <- function(
     if(identical(phi_0,NA)){
       if(identical(attr(model_to_Pi,"name"),"model_to_Pi_NP")){
         # Default starting location for phi_0 is uniform Pi
-        phi_0 = rep(log(1/J^2),J^2-1)
+        phi_0 = rep(log(1/(J*K)),J*K-1)
       }
     }
 
@@ -306,55 +291,49 @@ misclassifyr <- function(
     # Recording split_eta (the first position of psi in eta)
     split_eta = length(phi_0) + 1
 
-    # Additionally, setting the default step size for the numerical derivative
-    if(identical(optim_stepsize,NA)){
-      optim_stepsize = rep(1e-6, length(eta_0))
-    }
-
-    # Checking whether optim_stepsize has the right length
-    if(!identical(length(eta_0),length(optim_stepsize))){
-      stop("Error: eta_0 and optim_stepsize should be the same length.")
-    }
-
-    # Choosing penalty scales to be consistent with the size of the sample
-    ntotal = sum(tab$n)
-    # lambda_pos scales the penalty for violations of positivity (i.e. all probabilities should be positive)
-    if(identical(lambda_pos, NA)){
-      lambda_pos = ntotal^2
-    }
-    # lambda_dd scales the penalty for violations of diagonal dominance, as defined in Mattheis (2024).
-    if(identical(lambda_dd, NA)){
-      lambda_dd = ntotal^2
-    }
-
-
-    #------------------------------------------------------------
-    # Passing common objects to the shared environment
-    #------------------------------------------------------------
-
-    # Retrieving the shared environment
-    misclassifyr_env = get(".misclassifyr_env", envir = asNamespace("misclassifyr"))
-
-    # Passing common objects to the shared environment
-    misclassifyr_env$tab = tab
-    misclassifyr_env$J = J
-    misclassifyr_env$K = K
-    misclassifyr_env$lambda_pos = lambda_pos
-    misclassifyr_env$lambda_dd = lambda_dd
-
     #------------------------------------------------------------
     # Defining the objective function for estimation
     #------------------------------------------------------------
 
+    # Creating an environment to keep track of penalty scaling parameters
+    # and other parameters across draws
+    optim.env = new.env()
+    optim.env$tab = tab
+    optim.env$J = J
+    optim.env$K = K
+    optim.env$counter = 0
+    optim.env$lambda_max = sum(tab$n)^3
+    optim.env$lambda_pos = sum(tab$n)
+    optim.env$lambda_dd = sum(tab$n)^2
+
     # Defining the objective function
     objective = function(eta){
 
+      # Updating the counter
+      optim.env$counter = optim.env$counter + 1
+
       # Mapping model arguments to the entries of the joint distribution
-      Pi = model_to_Pi(eta[1:(split_eta-1)])
-      Delta = model_to_Delta(eta[(split_eta):length(eta)] )
+      Pi_ = model_to_Pi(eta[1:(split_eta-1)], J, K)
+      Delta_ = model_to_Delta(eta[(split_eta):length(eta)])
+
+      # Updating lambda_pos and lambda_dd depending on current violations of each restriction
+      if(any(c(Pi_,Delta_)<0) & optim.env$lambda_pos < optim.env$lambda_max){
+        # Violation of positivity, raising the penalty by (at most) 0.1%
+        optim.env$lambda_pos = (1 + 0.001*exp(-0.0001*optim.env$counter))*optim.env$lambda_pos
+      } else {
+        # No violation of positivity, lowering the penalty by (at most) 0.05%
+        optim.env$lambda_pos = (1 - 0.0005*exp(-0.0001*optim.env$counter))*optim.env$lambda_pos
+      }
 
       # Computing the log likelihood of the data given Pi and Delta
-      ll =  loglikelihood(c(c(Pi), c(Delta)))
+      ll =  loglikelihood(
+        tab = optim.env$tab,
+        theta = c(c(Pi_), c(Delta_)),
+        J = optim.env$J,
+        K = optim.env$K,
+        lambda_pos = optim.env$lambda_pos,
+        lambda_dd = optim.env$lambda_dd
+        )
 
       # Returning -1x the log likelihood + penalties
       return(-1*ll)
@@ -370,10 +349,10 @@ misclassifyr <- function(
                 fn = objective,
                 method = "BFGS",
                 hessian = T,
-                control = list(maxit = optim_maxit,
-                               reltol = optim_tol,
-                               abstol = optim_tol,
-                               ndeps = optim_stepsize))
+                control = list(trace = 1,
+                               REPORT = 10,
+                               maxit = optim_maxit,
+                               reltol = 1e-8))
 
     # Throwing an error if optim did not converge successfully
     if(out$convergence == 1){stop("Error: Maximum iterations reached before numerical convergence, consider increasing optim max iterations or tolerance.")}
@@ -381,43 +360,44 @@ misclassifyr <- function(
                                         out$message,
                                         "... consider alternative `optim` settings."))}
 
+    # Raising a warning if estimates are close to the initial value
+    if(sum((out$par - eta_0)^2) < 0.1){warning("Solution appears close to the intial value. Consider choosing a more conservative tolerance for optim and/or proceed with caution.")}
 
     #------------------------------------------------------------
     # Testing the stability of the optimizer
     #------------------------------------------------------------
 
-    if((check_stability)){
-
-      # Recording initial eta hat
-      eta_hat1 = out$par
-
-      # Initializing total inconsistency
-      inconsistency = 0
-
-      for(draw in 1:9){
-
-        # Additional estimates on perturbed starting locations
-        out2 = optim(par = eta_0 + rnorm(length(eta_0),sd = stability_sd),
-                     fn = objective,
-                     method = "BFGS",
-                     control = list(maxit = optim_maxit,
-                                    reltol = optim_tol,
-                                    abstol = optim_tol,
-                                    ndeps = optim_stepsize))
-        eta_hat2 = out2$par
-
-        # Adding the (absolute) difference between e^eta_hat1 and e^eta_hat2
-        inconsistency = inconsistency + sum(abs(exp(eta_hat1) - exp(eta_hat2)))
-      }
-
-      if(inconsistency < 0.01){
-        numerical_stability = paste0("Estimates stable in a ", stability_sd, " SD normal ball around eta_0.")
-      } else {
-        numerical_stability = paste0("Estimates stable in a ", stability_sd, " SD normal ball around eta_0, the sum of absolute differences is ", round(inconsistency,3) ," over 10 iterations.")
-      }
-
+    # If check_stability, increase the number of alternative starting points
+    if(check_stability){
+      extra_starting_points = 9
     } else {
-      numerical_stability = "Numerical stability not tested."
+      extra_starting_points = 1
+    }
+
+    # Recording initial eta hat
+    eta_hat1 = out$par
+
+    # Initializing total inconsistency
+    inconsistency = 0
+
+    for(draw in 1:extra_starting_points){
+
+      # Additional estimates on perturbed starting locations
+      out2 = optim(par = eta_0 + rnorm(length(eta_0),sd = stability_sd),
+                   fn = objective,
+                   method = "BFGS",
+                   control = list(maxit = optim_maxit,
+                                  reltol = optim_tol,
+                                  abstol = optim_tol,
+                                  ndeps = optim_stepsize))
+      eta_hat2 = out2$par
+
+      # Adding the (absolute) difference between e^eta_hat1 and e^eta_hat2
+      inconsistency = inconsistency + sum(abs(exp(eta_hat1) - exp(eta_hat2)))
+    }
+
+    if(inconsistency > 0.01){
+      stop("Error: Optimal eta is inconsitent across starting locations.")
     }
 
     #------------------------------------------------------------
@@ -425,9 +405,13 @@ misclassifyr <- function(
     #------------------------------------------------------------
 
     # Is the hessian of the fisher information invertible?
-    fisher_info = -1*out$hessian[1:(split_eta-1),1:(split_eta-1)]
+    # Note that the objective function is flipped, so we don't need to multiply by -1 again
+    fisher_info = out$hessian[1:(split_eta-1),1:(split_eta-1)]
     if (abs(det(fisher_info)) < 1e-9) {
-      warning("The Fisher information matrix is not invertible; using the Moore-Penrose inverse instead -- proceed with caution.")
+      fisher_info_err = "Fisher information matrix is not invertible."
+      warning("The Fisher information matrix is not invertible; using the Moore-Penrose inverse instead -- analytical variances may be inaccurate.")
+    } else {
+      fisher_info_err = "Fisher information matrix is invertible."
     }
 
     # Computing the Jacobian of model_to_Pi
@@ -436,18 +420,24 @@ misclassifyr <- function(
     # Computing the covariance matrix of Pi
     cov_Pi =  model_to_Pi_jacobian %*% pracma::pinv(fisher_info) %*% t(model_to_Pi_jacobian)
 
+    # Forcing the diagonal of cov_Pi to be non-negative
+    diag(cov_Pi) = pmax(diag(cov_Pi),0)
+
     #------------------------------------------------------------
     # Returning estimates and other info
     #------------------------------------------------------------
 
     # Return results
     return(list(
-      eta_hat = out$par,
+      Pi_hat = model_to_Pi(out$par[1:(split_eta-1)]),
+      Delta_hat = model_to_Delta(out$par[(split_eta):(length(out$par))]),
       cov_Pi = cov_Pi,
+      eta_hat = out$par,
       log_likelihood = -1*out$value,
       optim_counts = out$counts,
       model_to_Pi_jacobian = model_to_Pi_jacobian,
       eta_hessian = out$hessian,
+      fisher_info_err = fisher_info_err,
       numerical_stability = numerical_stability
     ))
 
@@ -458,7 +448,11 @@ misclassifyr <- function(
   #------------------------------------------------------------
 
   # Is there more than one covariate value?
-  if(is.list(tab)){
+  if(class(tab)=="list"){
+
+    # Determining the weight of each covariate cell
+    W_weights = sapply(tab, function(tab_) sum(tab_$n)) |> unname()
+    W_weights = W_weights / sum(W_weights)
 
     # Setting up parallel processing
     workers = parallel::makeCluster(cores)
@@ -474,30 +468,63 @@ misclassifyr <- function(
       cl = workers
     )
 
+    # Restructuring MisclassMLE_out into lists of each output
+    Pi_hat = lapply(MisclassMLE_out, "[[", 1)
+    Delta_hat = lapply(MisclassMLE_out, "[[", 2)
+    cov_Pi = lapply(MisclassMLE_out, "[[", 3)
+    eta_hat = lapply(MisclassMLE_out, "[[", 4)
+    log_likelihood = lapply(MisclassMLE_out, "[[", 5)
+    optim_counts = lapply(MisclassMLE_out, "[[", 6)
+    model_to_Pi_jacobian = lapply(MisclassMLE_out, "[[", 7)
+    eta_hessian = lapply(MisclassMLE_out, "[[", 8)
+    fisher_info_err = lapply(MisclassMLE_out, "[[", 9)
+    numerical_stability = lapply(MisclassMLE_out, "[[", 10)
+
+    MisclassMLE_out = list(
+      Pi_hat = Pi_hat,
+      Delta_hat = Delta_hat,
+      cov_Pi = cov_Pi,
+      eta_hat = eta_hat,
+      log_likelihood = log_likelihood,
+      optim_counts = optim_counts,
+      model_to_Pi_jacobian = model_to_Pi_jacobian,
+      eta_hessian = eta_hessian,
+      fisher_info_err = fisher_info_err,
+      numerical_stability = numerical_stability
+    )
+
   } else {
+
+    # Weight is one
+    W_weights = 1
 
     # Estimating Pi and Delta for the full population
     MisclassMLE_out = MisclassMLE(MisclassMLE_inputs)
 
   }
 
+  #------------------------------------------------------------
+  # Generating figures
+  #------------------------------------------------------------
 
-  # Returning estimates and other info if not computing beta
-  # (Maybe I should add default figures?)
-  if(!estimate_beta){
+
+
+  #------------------------------------------------------------
+  # Estimating beta and SE
+  #------------------------------------------------------------
+
+  if(estimate_beta){
+
+    # Estimating beta given Pi
+    beta = Pi_to_beta(MisclassMLE_out$Pi_hat,X_vals, Y_vals, W_weights)
+
+    # Estimating the SE via the delta method
+
+
+  } else {
+
     return(MisclassMLE_out)
+
   }
-
-  #------------------------------------------------------------
-  # Estimating beta
-  #------------------------------------------------------------
-
-  # if((estimate_beta)){}
-
-  #------------------------------------------------------------
-  # Estimating beta
-  #------------------------------------------------------------
-
-  #return()
 
 }

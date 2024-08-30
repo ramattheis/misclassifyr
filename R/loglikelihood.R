@@ -1,22 +1,15 @@
 #' Returns the log likelihood of the data.
 #'
 #' @param theta A numeric vector of length  Jx(J^2+K) describing the joint distribution of the data.
+#' @param tab
+#' @param J An integer or list corresponding to the number of unique values of `Y1` and `Y2`.
+#' @param K An integer or list corresponding to the number of unique values of `X`.
+#' @param lambda_pos A numeric value scaling a violations of positivity for the entries of Pi and Delta.
+#' @param lambda_dd A numeric value scaling a violations of diagonal dominance for Delta.
 #' @return the log likelihood of the data given theta, i.e. Pi and Delta.
+#' @keywords internal
 #' @export
-loglikelihood = function(theta){
-
-  # Importing tab, J, K, and lambda from the shared environment
-  misclassifyr_env = get(".misclassifyr_env", envir = asNamespace("misclassifyr"))
-  if(!exists("tab", envir = misclassifyr_env)){stop("Error: `tab` missing from `misclassifyr_env`")}
-  tab = misclassifyr_env$tab
-  if(!exists("J", envir = misclassifyr_env)){stop("Error: `J` missing from `misclassifyr_env`")}
-  J = misclassifyr_env$J
-  if(!exists("K", envir = misclassifyr_env)){stop("Error: `K` missing from `misclassifyr_env`")}
-  K = misclassifyr_env$K
-  if(!exists("lambda_pos", envir = misclassifyr_env)){stop("Error: `lambda_pos` missing from `misclassifyr_env`")}
-  lambda_pos = misclassifyr_env$lambda_pos
-  if(!exists("lambda_dd", envir = misclassifyr_env)){stop("Error: `lambda_dd` missing from `misclassifyr_env`")}
-  lambda_dd = misclassifyr_env$lambda_dd
+loglikelihood = function(theta,tab,J,K,lambda_pos,lambda_dd){
 
   # Building Pi
   Pi = theta[1:(J*K)]       # Extracting all but the last entry of Pi

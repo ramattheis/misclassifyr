@@ -3,16 +3,10 @@
 #' @param phi A numeric vector.
 #' @param J An integer corresponding to the dimension of Y.
 #' @param K An integer corresponding to the dimension of X.
+#' @param ... Additional, optional arguments.
 #' @return A numeric vector corresponding to the JxK matrix Pi
 #' @export
-model_to_Pi_NP = function(phi){
-
-  # Importing J, K from the shared environment
-  misclassifyr_env = get(".misclassifyr_env", envir = asNamespace("misclassifyr"))
-  if(!exists("J", envir = misclassifyr_env)){stop("Error: `J` missing from `misclassifyr_env`")}
-  J = misclassifyr_env$J
-  if(!exists("K", envir = misclassifyr_env)){stop("Error: `K` missing from `misclassifyr_env`")}
-  K = misclassifyr_env$K
+model_to_Pi_NP = function(phi,J,K,...){
 
   # Building Pi
   phi = exp(phi)  # Exponentiating to return to levels
