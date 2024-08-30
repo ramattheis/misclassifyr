@@ -41,7 +41,7 @@ misclassifyr <- function(
     X_vals = NA,
     Y_vals = NA,
     optim_maxit = 1e5,
-    optim_tol = 1e-9,
+    optim_tol = 1e-8,
     check_stability = F,
     stability_sd = 0.1,
     cores = 1) {
@@ -219,12 +219,6 @@ misclassifyr <- function(
     if(!identical(setdiff(c("Y1","Y2","X","n"), colnames(tab)),character(0))){
       stop("Error: `tab` should have four columns: `Y1`, `Y2`, `X`, and `n`.")
     }
-    # I don't think I need this, but keeping it around for now
-    #if( class(tab$Y1) != "integer" | max(tab$Y1) > J | min(tab$Y1) < 1 |
-    #    class(tab$Y2) != "integer" | max(tab$Y2) > J | min(tab$Y2) < 1 |
-    #    class(tab$X)  != "integer" | max(tab$X)  > K | min(tab$X) < 1 ){
-    #  stop("Error: `Y1`, `Y2`, and `X` should take integer values between `1` and `J` or `K`.")
-    #}
     if( !(class(tab$n) %in% c("double","numeric","integer") ) | min(tab$n) < 0){
       stop("Error: `n` should take non-negative integer values representing counts (or weighted counts) of unique values of `X`, `Y1`, and `Y2`")
     }
@@ -251,8 +245,14 @@ misclassifyr <- function(
 
     if(identical(phi_0,NA)){
       if(identical(attr(model_to_Pi,"name"),"model_to_Pi_NP")){
-        # Default starting location for phi_0 is uniform Pi
-        phi_0 = rep(log(1/(J*K)),J*K-1)
+        # Default starting location for phi_0 is the empirical distribution of X and Y1
+        tab_xy = tab |>
+          dplyr::group_by(X,Y1) |>
+          dplyr::summarise(n = sum(n),.groups = "drop") |>
+          as.data.frame()
+        tab_xy = tab_xy[order(tab_xy$Y1, tab_xy$X),]
+        tab_xy$p = tab_xy$n/sum(tab_xy$n)
+        phi_0 = log(tab_xy$p[1:(J*K-1)])
       }
     }
 
@@ -301,29 +301,15 @@ misclassifyr <- function(
     optim.env$tab = tab
     optim.env$J = J
     optim.env$K = K
-    optim.env$counter = 0
-    optim.env$lambda_max = sum(tab$n)^3
-    optim.env$lambda_pos = sum(tab$n)
+    optim.env$lambda_pos = sum(tab$n)^2
     optim.env$lambda_dd = sum(tab$n)^2
 
     # Defining the objective function
     objective = function(eta){
 
-      # Updating the counter
-      optim.env$counter = optim.env$counter + 1
-
       # Mapping model arguments to the entries of the joint distribution
       Pi_ = model_to_Pi(eta[1:(split_eta-1)], J, K)
       Delta_ = model_to_Delta(eta[(split_eta):length(eta)])
-
-      # Updating lambda_pos and lambda_dd depending on current violations of each restriction
-      if(any(c(Pi_,Delta_)<0) & optim.env$lambda_pos < optim.env$lambda_max){
-        # Violation of positivity, raising the penalty by (at most) 0.1%
-        optim.env$lambda_pos = (1 + 0.001*exp(-0.0001*optim.env$counter))*optim.env$lambda_pos
-      } else {
-        # No violation of positivity, lowering the penalty by (at most) 0.05%
-        optim.env$lambda_pos = (1 - 0.0005*exp(-0.0001*optim.env$counter))*optim.env$lambda_pos
-      }
 
       # Computing the log likelihood of the data given Pi and Delta
       ll =  loglikelihood(
@@ -349,10 +335,8 @@ misclassifyr <- function(
                 fn = objective,
                 method = "BFGS",
                 hessian = T,
-                control = list(trace = 1,
-                               REPORT = 10,
-                               maxit = optim_maxit,
-                               reltol = 1e-8))
+                control = list(maxit = optim_maxit,
+                               reltol = optim_tol))
 
     # Throwing an error if optim did not converge successfully
     if(out$convergence == 1){stop("Error: Maximum iterations reached before numerical convergence, consider increasing optim max iterations or tolerance.")}
@@ -361,7 +345,7 @@ misclassifyr <- function(
                                         "... consider alternative `optim` settings."))}
 
     # Raising a warning if estimates are close to the initial value
-    if(sum((out$par - eta_0)^2) < 0.1){warning("Solution appears close to the intial value. Consider choosing a more conservative tolerance for optim and/or proceed with caution.")}
+    if(sum((exp(out$par) - exp(eta_0))^2) < 0.1){warning("Solution appears close to the intial value. Consider choosing a more conservative tolerance for optim and/or proceed with caution.")}
 
     #------------------------------------------------------------
     # Testing the stability of the optimizer
@@ -387,9 +371,7 @@ misclassifyr <- function(
                    fn = objective,
                    method = "BFGS",
                    control = list(maxit = optim_maxit,
-                                  reltol = optim_tol,
-                                  abstol = optim_tol,
-                                  ndeps = optim_stepsize))
+                                  reltol = optim_tol))
       eta_hat2 = out2$par
 
       # Adding the (absolute) difference between e^eta_hat1 and e^eta_hat2
@@ -397,7 +379,7 @@ misclassifyr <- function(
     }
 
     if(inconsistency > 0.01){
-      stop("Error: Optimal eta is inconsitent across starting locations.")
+      warning("Optimal eta is inconsitent across starting locations.")
     }
 
     #------------------------------------------------------------
@@ -415,7 +397,11 @@ misclassifyr <- function(
     }
 
     # Computing the Jacobian of model_to_Pi
-    model_to_Pi_jacobian = numDeriv::jacobian(model_to_Pi, out$par[1:(split_eta-1)])
+    model_to_Pi_wrapper = function(phi){
+      return(model_to_Pi(phi,J,K))
+    }
+
+    model_to_Pi_jacobian = numDeriv::jacobian(model_to_Pi_wrapper, out$par[1:(split_eta-1)])
 
     # Computing the covariance matrix of Pi
     cov_Pi =  model_to_Pi_jacobian %*% pracma::pinv(fisher_info) %*% t(model_to_Pi_jacobian)
@@ -429,7 +415,7 @@ misclassifyr <- function(
 
     # Return results
     return(list(
-      Pi_hat = model_to_Pi(out$par[1:(split_eta-1)]),
+      Pi_hat = model_to_Pi_wrapper(out$par[1:(split_eta-1)]),
       Delta_hat = model_to_Delta(out$par[(split_eta):(length(out$par))]),
       cov_Pi = cov_Pi,
       eta_hat = out$par,
@@ -438,7 +424,7 @@ misclassifyr <- function(
       model_to_Pi_jacobian = model_to_Pi_jacobian,
       eta_hessian = out$hessian,
       fisher_info_err = fisher_info_err,
-      numerical_stability = numerical_stability
+      inconsistency = inconsistency
     ))
 
   }
@@ -478,7 +464,7 @@ misclassifyr <- function(
     model_to_Pi_jacobian = lapply(MisclassMLE_out, "[[", 7)
     eta_hessian = lapply(MisclassMLE_out, "[[", 8)
     fisher_info_err = lapply(MisclassMLE_out, "[[", 9)
-    numerical_stability = lapply(MisclassMLE_out, "[[", 10)
+    inconsistency = lapply(MisclassMLE_out, "[[", 10)
 
     MisclassMLE_out = list(
       Pi_hat = Pi_hat,
@@ -490,7 +476,7 @@ misclassifyr <- function(
       model_to_Pi_jacobian = model_to_Pi_jacobian,
       eta_hessian = eta_hessian,
       fisher_info_err = fisher_info_err,
-      numerical_stability = numerical_stability
+      inconsistency = inconsistency
     )
 
   } else {
