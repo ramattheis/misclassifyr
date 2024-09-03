@@ -2,7 +2,7 @@
 #'
 #' This function provides a menu of options for estimation and inference of misclassification models in which the analyst has access to two noisy measures, `Y1` and `Y2` of a latent outcome `Y*`, a correctly measured covariate `X`, and discrete controls `W`.
 #'
-#' @import parallel numDeriv pracma
+#' @import parallel
 #'
 #' @param tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should be numeric with names `Y1`, `Y2`, `X`, and `n` where `Y1` and `Y2` take each value between `1` and `J`, `X` takes each value between `1` and `K`, and
 #' @param J An integer or list corresponding to the number of unique values of `Y1` and `Y2`.
@@ -20,6 +20,7 @@
 #' @param X_vals A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.
 #' @param Y_vals A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.
 #' @param n_mcmc_draws An integer corresponding to the length of the MCMC chain.
+#' @param n_burnin An integer giving the length of the burn-in period for each MCMC chain, must be shorter than `n_mcmc_draws`.
 #' @param thinning_rate An integer indicating how frequently to record posterior draws from the MCMC chain -- e.g. a `thinning_rate` of 2 records every other draw.
 #' @param cores An integer for the number of CPUs available for parallel processing.
 #' @return An object that includes estimates and information from the estimation process
@@ -39,10 +40,9 @@ misclassifyr <- function(
     estimate_betas = F,
     X_vals = NA,
     Y_vals = NA,
-    optim_maxit = 1e5,
-    optim_tol = 1e-8,
-    check_stability = F,
-    stability_sd = 0.1,
+    n_mcmc_draws = 1e5,
+    n_burnin = 5e4,
+    thinning_rate = 5,
     cores = 1) {
 
   #------------------------------------------------------------
@@ -484,7 +484,7 @@ misclassifyr <- function(
     parallel::clusterEvalQ(workers, require(misclassifyr)) |> invisible()
     parallel::clusterExport(workers, "MisclassMLE") |> invisible()
 
-    # Estimating Pi and Delta within covariate cells
+    # Drawing from the posterior of Pi and Delta within covariate cells
     MisclassMLE_out = pbapply::pblapply(
       MisclassMLE_inputs,
       MisclassMLE,
@@ -492,28 +492,18 @@ misclassifyr <- function(
     )
 
     # Restructuring MisclassMLE_out into lists of each output
-    Pi_hat = lapply(MisclassMLE_out, "[[", 1)
-    Delta_hat = lapply(MisclassMLE_out, "[[", 2)
-    cov_Pi = lapply(MisclassMLE_out, "[[", 3)
-    eta_hat = lapply(MisclassMLE_out, "[[", 4)
-    log_likelihood = lapply(MisclassMLE_out, "[[", 5)
-    optim_counts = lapply(MisclassMLE_out, "[[", 6)
-    model_to_Pi_jacobian = lapply(MisclassMLE_out, "[[", 7)
-    eta_hessian = lapply(MisclassMLE_out, "[[", 8)
-    fisher_info_err = lapply(MisclassMLE_out, "[[", 9)
-    inconsistency = lapply(MisclassMLE_out, "[[", 10)
+    posterior_Pi = lapply(MisclassMLE_out, "[[", 1)
+    posterior_Delta = lapply(MisclassMLE_out, "[[", 2)
+    posterior_eta = lapply(MisclassMLE_out, "[[", 3)
+    ll_history = lapply(MisclassMLE_out, "[[", 4)
+    accepted_proposals = lapply(MisclassMLE_out, "[[", 5)
 
     MisclassMLE_out = list(
-      Pi_hat = Pi_hat,
-      Delta_hat = Delta_hat,
-      cov_Pi = cov_Pi,
-      eta_hat = eta_hat,
-      log_likelihood = log_likelihood,
-      optim_counts = optim_counts,
-      model_to_Pi_jacobian = model_to_Pi_jacobian,
-      eta_hessian = eta_hessian,
-      fisher_info_err = fisher_info_err,
-      inconsistency = inconsistency
+      posterior_Pi,
+      posterior_Delta,
+      posterior_eta,
+      ll_history,
+      accepted_proposals
     )
 
   } else {
