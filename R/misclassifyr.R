@@ -22,6 +22,7 @@
 #' @param n_mcmc_draws An integer corresponding to the length of the MCMC chain.
 #' @param n_burnin An integer giving the length of the burn-in period for each MCMC chain, must be shorter than `n_mcmc_draws`.
 #' @param thinning_rate An integer indicating how frequently to record posterior draws from the MCMC chain -- e.g. a `thinning_rate` of 2 records every other draw.
+#' @param gibbs_proposal_sd An numeric value giving the standard deviation for the proposal distribution in each Gibbs step.
 #' @param cores An integer for the number of CPUs available for parallel processing.
 #' @return An object that includes estimates and information from the estimation process
 #' @export
@@ -29,8 +30,8 @@ misclassifyr <- function(
     tab,
     J,
     K,
-    model_to_Pi = "model_to_Pi_NP",
-    model_to_Delta = "model_to_Delta_NP_ind",
+    model_to_Pi = model_to_Pi_NP,
+    model_to_Delta = model_to_Delta_NP_ind,
     phi_0 = NA,
     psi_0 = NA,
     X_names = NA,
@@ -40,9 +41,10 @@ misclassifyr <- function(
     estimate_betas = F,
     X_vals = NA,
     Y_vals = NA,
-    n_mcmc_draws = 1e5,
-    n_burnin = 5e4,
-    thinning_rate = 5,
+    n_mcmc_draws = 2e4,
+    n_burnin = 1e4,
+    thinning_rate = 2,
+    gibbs_proposal_sd = 0.1,
     cores = 1) {
 
   #------------------------------------------------------------
@@ -50,11 +52,24 @@ misclassifyr <- function(
   # other input errors caught in MisclassMLE()
   #------------------------------------------------------------
 
-  if(!(is.integer(cores)|(is.numeric(cores) & abs(cores - floor(cores)) < 1e-16))){
+  if(!identical(cores%%1,0)){
     stop("Error: `cores` should be an integer.")
   } else if(parallel::detectCores() < cores){
     stop("Error: You requested more cores than appear available on your machine.")
   }
+
+  if(!identical(n_mcmc_draws%%1,0)){ stop("Error: `n_mcmc_draws` should be an integer.") }
+  if(!identical(n_burnin%%1,0)){ stop("Error: `n_burnin` should be an integer.") }
+  if(!identical(thinning_rate%%1,0)){ stop("Error: `thinning_rate` should be an integer.") }
+  if(identical(as.numeric(gibbs_poropsal_sd),NA)){ stop("Error: `gibbs_proposal_sd` should be numeric.") }
+
+  # Throwing an error if n_burnin or n_mcmc_draws is too small
+  if(n_mcmc_draws < 10000){ stop("Error: `n_mcmc_draws` is too small. Choose a value of at least 10000.")}
+  if(n_burnin < 5000){ stop("Error: `n_burnin` is too small. Choose a value of at least 5000.")}
+
+  # Throwing an error if the relative size of n_mcmc_draws/ n_burnin /
+  if(n_mcmc_draws - n_burnin < 1000){ stop("Error: `n_burnin` is too close to `n_mcmc_draws`. Choose a smaller `n_burnin` or a larger `n_mcmc_draws`.")}
+  if((n_mcmc_draws - n_burnin)/thinning_rate < 1000){ stop("Error: `thinning_rate` is too large. Choose a smaller `n_thinning_rate` or a larger gap between `n_burnin` and `n_mcmc_draws`.")}
 
   #-----------------------------
   # Recording the types of each object
@@ -315,22 +330,22 @@ misclassifyr <- function(
     # Defining an environment to keep track of the current parameter value and likelihood
     gibbs.env = new.env()
     gibbs.env$counter = 0
-    gibbs.env$lambda_pos_0 = sum(tab$n)
-    gibbs.env$lambda_dd_0 = sum(tab$n)
-    gibbs.env$lambda_pos_T = sum(tab$n)^1.5
-    gibbs.env$lambda_dd_T = sum(tab$n)^1.5
     gibbs.env$lambda_pos = sum(tab$n)
     gibbs.env$lambda_dd = sum(tab$n)
+    gibbs.env$lambda_pos_max = sum(tab$n)^2
+    gibbs.env$lambda_dd_max = sum(tab$n)^2
     gibbs.env$accepted_proposals = 0
     gibbs.env$eta_current = eta_0
+    gibbs.env$ll_current = objective(eta_0) + prior(eta_0)
     gibbs.env$eta_history = list()
     gibbs.env$ll_history = list()
+    gibbs.env$lambda_history = list()
 
     # Defining a function to draw a proposal for a single parameter and accept/reject it
     gibbs_step = function(index){
       # Drawing the proposal
       eta_proposed = gibbs.env$eta_current
-      gibbs_jump = rnorm(1,0,0.1)
+      gibbs_jump = rnorm(1, mean = 0, sd = gibbs_poropsal_sd)
       eta_proposed[index] = eta_proposed[index] + gibbs_jump
 
       # Finding the log posterior likelihood
@@ -342,6 +357,7 @@ misclassifyr <- function(
       if(log(runif(1)) <  ll_proposed - ll_current - gibbs_jump){
         # Accept the proposal
         gibbs.env$eta_current = eta_proposed
+        gibbs.env$ll_current = ll_current
         gibbs.env$accepted_proposals = gibbs.env$accepted_proposals + 1
       } # Nothing changes if the proposal is rejected
 
@@ -354,21 +370,54 @@ misclassifyr <- function(
 
     while(gibbs.env$counter < n_mcmc_draws){
 
+      #------------------------------------------------
+      # Rescaling penalties
+
+      # Only rescaling penalties during the burn-in
+      if(gibbs.env$counter < n_burnin){
+
+        # Penalties should increase if they are binding
+        Pi_current = model_to_Pi(gibbs.env$eta_current[1:(split_eta -1)], J, K)
+        Delta_current = matrix(model_to_Delta(gibbs.env$eta_current[split_eta:length(gibbs.env$eta_current)]),nrow=J)
+        penalty_pos = any(c(Pi_current,Delta_current) < -1e-5) # Allowing very small negative probabilities to give the sampler room to breathe
+        penalty_dd = any(sapply(1:J^2, function(i) pmax(0,Delta_current[ifelse(i>=J & i%%J==0,J,i%%J),
+                                                                        (floor((i-1)/J)*J+1):(floor((i-1)/J+1)*J)] - Delta_current[ifelse(i>=J & i%%J==0,J,i%%J),i])^2) != 0)
+        if(penalty_pos){ gibbs.env$lambda_pos = 1.01*gibbs.env$lambda_pos }
+        if(penalty_dd){ gibbs.env$lambda_dd = 1.01*gibbs.env$lambda_dd }
+
+        # Penalties should decrease if they are strangling the sampler
+        if((gibbs.env$counter > n_burnin/4) & !penalty_pos & !penalty_dd){
+          # Checking for high levels of autocorrelation in chains
+          eta_history = do.call(rbind, gibbs.env$eta_history)
+          eta_recent_history = eta_history[(nrow(eta_history) - 1000):nrow(eta_history),]
+          death_valley = any(apply(eta_recent_history,2, function(eta_j) acf(eta_j,plot = F,lag.max = 100)$acf[100] > 0.5))
+          if(death_valley){
+            gibbs.env$lambda_pos = 0.99*gibbs.env$lambda_pos
+            gibbs.env$lambda_dd = 0.99*gibbs.env$lambda_dd
+          }
+        }
+      }
+
+      #------------------------------------------------
+      # Gibbs step
+
       # Increasing the step
       gibbs.env$counter = gibbs.env$counter+1
-
-      # Increasing the scale of penalties
-      penalty_size = 1 / (1 + exp(-1*(100/n_mcmc_draws)*(gibbs.env$counter - n_mcmc_draws/10)))
-      gibbs.env$lambda_pos = (1-penalty_size)*gibbs.env$lambda_pos_0 + penalty_size*gibbs.env$lambda_pos_T
-      gibbs.env$lambda_dd = (1-penalty_size)*gibbs.env$lambda_dd_0 + penalty_size*gibbs.env$lambda_dd_T
 
       # Looping through parameters, accepting or rejecting proposals in sequence
       invisible(sapply(seq_along(eta_0), gibbs_step))
 
-      # Recording new LL evaluated at the max penalty
-      gibbs.env$lambda_pos = gibbs.env$lambda_pos_T
-      gibbs.env$lambda_dd = gibbs.env$lambda_dd_T
+      #------------------------------------------------
+      # Recording the posterior and other values
+
+      # Swapping out lambda_pos and lambda_dd for large values to get consistent ll history
+      lambda_pos_keep = gibbs.env$lambda_pos
+      lambda_dd_keep = gibbs.env$lambda_dd
+      gibbs.env$lambda_pos = gibbs.env$lambda_pos_max
+      gibbs.env$lambda_dd = gibbs.env$lambda_dd_max
       ll_current = objective(gibbs.env$eta_current) + prior(gibbs.env$eta_current)
+      gibbs.env$lambda_pos = lambda_pos_keep
+      gibbs.env$lambda_dd = lambda_dd_keep
 
       # Recording every Nth value
       if(gibbs.env$counter%%thinning_rate==1){
@@ -377,6 +426,7 @@ misclassifyr <- function(
                    "... log likelihood = ", floor(ll_current),"\n" ))
         gibbs.env$ll_history = append(gibbs.env$ll_history, list(ll_current))
         gibbs.env$eta_history = append(gibbs.env$eta_history, list(gibbs.env$eta_current))
+        gibbs.env$lambda_history = append(gibbs.env$lambda_history, list( cbind(gibbs.env$lambda_pos, gibbs.env$lambda_dd ) ))
       }
     }
 

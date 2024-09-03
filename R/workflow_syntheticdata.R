@@ -23,4 +23,5 @@ Y_vals = list(1:5,1:5)
 n_mcmc_draws = 2e4
 n_burnin = 1e4
 thinning_rate = 2
+gibbs_poropsal_sd = 0.1
 cores = 1
