@@ -19,9 +19,8 @@
 #' @param estimate_betas A logical value indicating whether to regress Y on X within covariate cells.
 #' @param X_vals A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.
 #' @param Y_vals A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.
-#' @param optim_maxit An integer for the maximum number of iterations in numerical optimization, passed to `optim()`
-#' @param optim_tol A positive number defining convergence in numerical optimization, passed to `optim()`
-#' @param check_stability A logical value indicating whether to perform a more rigorous stability test for the numerical optimizer.
+#' @param n_mcmc_draws An integer corresponding to the length of the MCMC chain.
+#' @param thinning_rate An integer indicating how frequently to record posterior draws from the MCMC chain -- e.g. a `thinning_rate` of 2 records every other draw.
 #' @param cores An integer for the number of CPUs available for parallel processing.
 #' @return An object that includes estimates and information from the estimation process
 #' @export
@@ -70,11 +69,7 @@ misclassifyr <- function(
                   class(X_names),
                   class(Y_names),
                   class(X_vals),
-                  class(Y_vals),
-                  class(optim_maxit),
-                  class(optim_tol),
-                  class(check_stability),
-                  class(stability_sd)) |>
+                  class(Y_vals)) |>
     as.data.frame()
 
   colnames(input_types) = "type"
@@ -90,11 +85,7 @@ misclassifyr <- function(
     "X_names",
     "Y_names",
     "X_vals",
-    "Y_vals",
-    "optim_maxit",
-    "optim_tol",
-    "check_stability",
-    "stability_sd")
+    "Y_vals")
 
   #-----------------------------
   # Are any of the objects lists? If so, making all objects lists
@@ -145,11 +136,7 @@ misclassifyr <- function(
       Y_names = Y_names[[j]],
       W_names = W_names[j],
       X_vals = X_vals[[j]],
-      Y_vals = Y_vals[[j]],
-      optim_maxit = optim_maxit[[j]],
-      optim_tol = optim_tol[[j]],
-      check_stability = check_stability[[j]],
-      stability_sd = stability_sd[[j]]
+      Y_vals = Y_vals[[j]]
       ))
 
   } else {
@@ -166,11 +153,7 @@ misclassifyr <- function(
       Y_names = Y_names,
       W_names = W_names,
       X_vals = X_vals,
-      Y_vals = Y_vals,
-      optim_maxit = optim_maxit,
-      optim_tol = optim_tol,
-      check_stability = check_stability,
-      stability_sd = stability_sd
+      Y_vals = Y_vals
     )
   }
 
@@ -196,12 +179,6 @@ misclassifyr <- function(
     W_names = MisclassMLE_input$W_names
     X_vals = MisclassMLE_input$X_vals
     Y_vals = MisclassMLE_input$Y_vals
-    lambda_pos = MisclassMLE_input$lambda_pos
-    lambda_dd = MisclassMLE_input$lambda_dd
-    optim_maxit = MisclassMLE_input$optim_maxit
-    optim_tol = MisclassMLE_input$optim_tol
-    check_stability = MisclassMLE_input$check_stability
-    stability_sd = MisclassMLE_input$stability_sd
 
     #------------------------------------------------------------
     # Catching input errors
@@ -240,7 +217,7 @@ misclassifyr <- function(
 
 
     #------------------------------------------------------------
-    # Setting the starting location for optimization
+    # Setting the starting location for MCMC
     #------------------------------------------------------------
 
     if(identical(phi_0,NA)){
@@ -253,6 +230,9 @@ misclassifyr <- function(
         tab_xy = tab_xy[order(tab_xy$Y1, tab_xy$X),]
         tab_xy$p = tab_xy$n/sum(tab_xy$n)
         phi_0 = softlog(tab_xy$p[1:(J*K-1)])
+
+        # Default starting location for phi_0 is flat
+        #phi_0 = softlog(rep(1/(J*K), J*K-1 ))
       }
     }
 
@@ -291,18 +271,10 @@ misclassifyr <- function(
     # Recording split_eta (the first position of psi in eta)
     split_eta = length(phi_0) + 1
 
+
     #------------------------------------------------------------
     # Defining the objective function for estimation
     #------------------------------------------------------------
-
-    # Creating an environment to keep track of penalty scaling parameters
-    # and other parameters across draws
-    optim.env = new.env()
-    optim.env$tab = tab
-    optim.env$J = J
-    optim.env$K = K
-    optim.env$lambda_pos = sum(tab$n)^2
-    optim.env$lambda_dd = sum(tab$n)^2
 
     # Defining the objective function
     objective = function(eta){
@@ -312,102 +284,171 @@ misclassifyr <- function(
       Delta_ = model_to_Delta(eta[(split_eta):length(eta)])
 
       # Computing the log likelihood of the data given Pi and Delta
-      ll =  loglikelihood(
-        tab = optim.env$tab,
-        theta = c(c(Pi_), c(Delta_)),
-        J = optim.env$J,
-        K = optim.env$K,
-        lambda_pos = optim.env$lambda_pos,
-        lambda_dd = optim.env$lambda_dd
-        )
+      ll =  loglikelihood(theta = c(c(Pi_), c(Delta_)),
+                          tab, J, K, gibbs.env$lambda_pos, gibbs.env$lambda_dd)
 
-      # Returning -1x the log likelihood + penalties
-      return(-1*ll)
+      # Returning the log likelihood + penalties
+      return(ll)
 
     }
 
     #------------------------------------------------------------
-    # Optimizing objective w.r.t. eta
+    # Defining the prior density
     #------------------------------------------------------------
 
-    # Optimizing objective w.r.t. eta
-    out = optim(par = eta_0,
-                fn = objective,
-                method = "BFGS",
-                hessian = T,
-                control = list(maxit = optim_maxit,
-                               reltol = optim_tol))
+    prior = function(eta){
 
-    # Throwing an error if optim did not converge successfully
-    if(out$convergence == 1){stop("Error: Maximum iterations reached before numerical convergence, consider increasing optim max iterations or tolerance.")}
-    if(out$convergence > 1){stop(paste("Error: Numerical optimization failed with message:",
-                                        out$message,
-                                        "... consider alternative `optim` settings."))}
+      # Mapping model arguments to the entries of the joint distribution
+      Pi_ = model_to_Pi(eta[1:(split_eta-1)], J, K)
+      Delta_ = model_to_Delta(eta[(split_eta):length(eta)])
 
-    # Raising a warning if estimates are close to the initial value
-    if(sum((exp(out$par) - exp(eta_0))^2) < 0.1){warning("Solution appears close to the intial value. Consider choosing a more conservative tolerance for optim and/or proceed with caution.")}
+      # A flat prior in levels implies an exponential density in logs,
+      # and a flat density in logs (so just returning the sum of logs)
+      return(sum(softlog(c(Pi_,Delta_))))
 
-    #------------------------------------------------------------
-    # Testing the stability of the optimizer
-    #------------------------------------------------------------
-
-    # If check_stability, increase the number of alternative starting points
-    if(check_stability){
-      extra_starting_points = 9
-    } else {
-      extra_starting_points = 1
-    }
-
-    # Recording initial eta hat
-    eta_hat1 = out$par
-
-    # Initializing total inconsistency
-    inconsistency = 0
-
-    for(draw in 1:extra_starting_points){
-
-      # Additional estimates on perturbed starting locations
-      out2 = optim(par = eta_0 + rnorm(length(eta_0),sd = stability_sd),
-                   fn = objective,
-                   method = "BFGS",
-                   control = list(maxit = optim_maxit,
-                                  reltol = optim_tol))
-      eta_hat2 = out2$par
-
-      # Adding the (absolute) difference between e^eta_hat1 and e^eta_hat2
-      inconsistency = inconsistency + sum(abs(exp(eta_hat1) - exp(eta_hat2)))
-    }
-
-    if(inconsistency > 0.01){
-      warning("Optimal eta is inconsitent across starting locations.")
     }
 
     #------------------------------------------------------------
-    # Computing the covariance matrix of Pi
+    # Defining a gibbs sampler
     #------------------------------------------------------------
 
-    # Is the hessian of the fisher information invertible?
-    # Note that the objective function is flipped, so we don't need to multiply by -1 again
-    fisher_info = out$hessian[1:(split_eta-1),1:(split_eta-1)]
-    if (abs(det(fisher_info)) < 1e-9) {
-      fisher_info_err = "Fisher information matrix is not invertible."
-      warning("The Fisher information matrix is not invertible; using the Moore-Penrose inverse instead -- analytical variances may be inaccurate.")
-    } else {
-      fisher_info_err = "Fisher information matrix is invertible."
+    # Defining an environment to keep track of the current parameter value and likelihood
+    gibbs.env = new.env()
+    gibbs.env$counter = 0
+    gibbs.env$lambda_pos_0 = sum(tab$n)
+    gibbs.env$lambda_dd_0 = sum(tab$n)
+    gibbs.env$lambda_pos_T = sum(tab$n)^1.5
+    gibbs.env$lambda_dd_T = sum(tab$n)^1.5
+    gibbs.env$lambda_pos = sum(tab$n)
+    gibbs.env$lambda_dd = sum(tab$n)
+    gibbs.env$accepted_proposals = 0
+    gibbs.env$eta_current = eta_0
+    gibbs.env$eta_history = list()
+    gibbs.env$ll_history = list()
+
+    # Defining a function to draw a proposal for a single parameter and accept/reject it
+    gibbs_step = function(index){
+      # Drawing the proposal
+      eta_proposed = gibbs.env$eta_current
+      gibbs_jump = rnorm(1,0,0.1)
+      eta_proposed[index] = eta_proposed[index] + gibbs_jump
+
+      # Finding the log posterior likelihood
+      ll_proposed = objective(eta_proposed) + prior(eta_proposed)
+      ll_current = objective(gibbs.env$eta_current) + prior(gibbs.env$eta_current)
+
+      # The MH acceptance probability is the difference of the proposed and current
+      # log posterior likelihoods minus the gibbs jump
+      if(log(runif(1)) <  ll_proposed - ll_current - gibbs_jump){
+        # Accept the proposal
+        gibbs.env$eta_current = eta_proposed
+        gibbs.env$accepted_proposals = gibbs.env$accepted_proposals + 1
+      } # Nothing changes if the proposal is rejected
+
+      # Nothing to return, all changes recorded in gibbs.env
     }
 
-    # Computing the Jacobian of model_to_Pi
-    model_to_Pi_wrapper = function(phi){
-      return(model_to_Pi(phi,J,K))
+    #------------------------------------------------------------
+    # Exploring the posterior of Pi and Delta via Gibbs-MCMC
+    #------------------------------------------------------------
+
+    while(gibbs.env$counter < n_mcmc_draws){
+
+      # Increasing the step
+      gibbs.env$counter = gibbs.env$counter+1
+
+      # Increasing the scale of penalties
+      penalty_size = 1 / (1 + exp(-1*(100/n_mcmc_draws)*(gibbs.env$counter - n_mcmc_draws/10)))
+      gibbs.env$lambda_pos = (1-penalty_size)*gibbs.env$lambda_pos_0 + penalty_size*gibbs.env$lambda_pos_T
+      gibbs.env$lambda_dd = (1-penalty_size)*gibbs.env$lambda_dd_0 + penalty_size*gibbs.env$lambda_dd_T
+
+      # Looping through parameters, accepting or rejecting proposals in sequence
+      invisible(sapply(seq_along(eta_0), gibbs_step))
+
+      # Recording new LL evaluated at the max penalty
+      gibbs.env$lambda_pos = gibbs.env$lambda_pos_T
+      gibbs.env$lambda_dd = gibbs.env$lambda_dd_T
+      ll_current = objective(gibbs.env$eta_current) + prior(gibbs.env$eta_current)
+
+      # Recording every Nth value
+      if(gibbs.env$counter%%thinning_rate==1){
+        cat(paste0("steps = ",gibbs.env$counter,
+                   "... accepted proposals = ", gibbs.env$accepted_proposals,
+                   "... log likelihood = ", floor(ll_current),"\n" ))
+        gibbs.env$ll_history = append(gibbs.env$ll_history, list(ll_current))
+        gibbs.env$eta_history = append(gibbs.env$eta_history, list(gibbs.env$eta_current))
+      }
     }
 
-    model_to_Pi_jacobian = numDeriv::jacobian(model_to_Pi_wrapper, out$par[1:(split_eta-1)])
+    # Extracting the posterior for eta
+    posterior_eta = do.call(rbind,gibbs.env$eta_history[(n_burnin/thinning_rate):length(gibbs.env$eta_history)])
 
-    # Computing the covariance matrix of Pi
-    cov_Pi =  model_to_Pi_jacobian %*% pracma::pinv(fisher_info) %*% t(model_to_Pi_jacobian)
+    # Defining functions for extracting Pi and Delta from eta_hat
+    eta_hat_to_Pi_hat = function(eta_hat, draw){
 
-    # Forcing the diagonal of cov_Pi to be non-negative
-    diag(cov_Pi) = pmax(diag(cov_Pi),0)
+      # Extracting Pi from eta hat
+      Pi_hat = model_to_Pi(eta_hat[1:(split_eta - 1)],J,K)
+
+      # Binding with corresponding names of X and Y*
+      X_name = sapply(X_names, function(v) rep(v,J)) |> c()
+      Y_name = rep(Y_names, K) |> c()
+
+      # Binding as a data frame
+      Pi_hat_df = as.data.frame(cbind(Pi_hat, X_name, Y_name))
+
+      if(!identical(X_vals,NA)){
+        # Binding with corresponding names of X and Y*
+        Pi_hat_df$X_val = sapply(X_vals, function(v) rep(v,J)) |> c()
+        Pi_hat_df$Y_val = rep(Y_vals, K) |> c()
+      } else {
+        Pi_hat_df$X_val = NA
+        Pi_hat_df$Y_val = NA
+      }
+
+      # Recording posterior draw
+      Pi_hat_df$draw = draw
+
+      return(Pi_hat_df)
+
+    }
+
+    eta_hat_to_Delta_hat = function(eta_hat, draw){
+
+      # Extracting Delta from eta hat
+      Delta_hat = model_to_Delta(eta_hat[split_eta:length(eta_hat)])
+
+      # Binding to corresponding names of Y*, Y1, Y2
+      Y2_name = rep(Y_names, J^2)
+      Y1_name = rep(c(sapply(Y_names, function(y) rep(y,J))),J)
+      Ys_name = c(sapply(Y_names, function(y) rep(y, J^2)))
+
+      # Binding as a data frame
+      Delta_hat_df = as.data.frame(cbind(Delta_hat, Ys_name, Y1_name, Y2_name))
+
+      if(!identical(Y_vals,NA)){
+        # Binding with corresponding names of X and Y*
+        Delta_hat_df$Y2_val = rep(Y_vals, J^2)
+        Delta_hat_df$Y1_val = rep(c(sapply(Y_vals, function(y) rep(y,J))),J)
+        Delta_hat_df$Ys_val = c(sapply(Y_vals, function(y) rep(y, J^2)))
+      } else {
+        Delta_hat_df$Ys_val = NA
+        Delta_hat_df$Y1_val = NA
+        Delta_hat_df$Y2_val = NA
+      }
+
+      # Recording posterior draw
+      Delta_hat_df$draw = draw
+
+      return(Delta_hat_df)
+
+    }
+
+
+    # Posterior for Pi
+    posterior_Pi = do.call(rbind,lapply(1:nrow(posterior_eta), function(d) eta_hat_to_Pi_hat(posterior_eta[d,1:(split_eta - 1)],d)))
+
+    # Posterior for Delta
+    posterior_Delta = do.call(rbind,lapply(1:nrow(posterior_eta), function(d) eta_hat_to_Pi_hat(posterior_eta[d,1:(split_eta - 1)],d)))
 
     #------------------------------------------------------------
     # Returning estimates and other info
@@ -415,19 +456,15 @@ misclassifyr <- function(
 
     # Return results
     return(list(
-      Pi_hat = model_to_Pi_wrapper(out$par[1:(split_eta-1)]),
-      Delta_hat = model_to_Delta(out$par[(split_eta):(length(out$par))]),
-      cov_Pi = cov_Pi,
-      eta_hat = out$par,
-      log_likelihood = -1*out$value,
-      optim_counts = out$counts,
-      model_to_Pi_jacobian = model_to_Pi_jacobian,
-      eta_hessian = out$hessian,
-      fisher_info_err = fisher_info_err,
-      inconsistency = inconsistency
+      posterior_Pi = posterior_Pi,
+      posterior_Delta = posterior_Delta,
+      posterior_eta = posterior_eta,
+      ll_history = unlist(gibbs.env$ll_history),
+      accepted_proposals = gibbs.env$accepted_proposals
     ))
 
   }
+
 
   #------------------------------------------------------------
   # Estimating Pi and Delta

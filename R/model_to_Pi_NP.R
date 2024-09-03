@@ -10,7 +10,7 @@ model_to_Pi_NP = function(phi,J,K,...){
 
   # Building Pi
   phi = exp(phi)  # Exponentiating to return to levels
-  phi = c(phi[1:(K-1)], 1-sum(phi), phi[K:(J*K-1)] ) # Bottom-left corner forces probabilities to sum to 1
+  phi = c(phi[1:(J*K-1)], 1-sum(phi)) # Last entry forces probabilities to sum to 1
   Pi = matrix(phi,nrow = J)   # Converting to matrix, Y* rows, X cols
 
   return(c(Pi))
