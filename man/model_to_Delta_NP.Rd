@@ -2,16 +2,16 @@
 % Please edit documentation in R/model_to_Delta_NP.R
 \name{model_to_Delta_NP}
 \alias{model_to_Delta_NP}
-\title{Maps model parameters, psi, to the conditional distribution Y1, Y2 | Y*, Delta.}
+\title{Maps model parameters, psi, to Delta, the fully non-parametric  distribution of Y1, Y2 | Y*}
 \usage{
 model_to_Delta_NP(psi)
 }
 \arguments{
-\item{psi}{A numeric vector containing Pi, Delta^{(1)}, and Delta^{(2)}.}
+\item{psi}{A numeric vector of length\code{J}^2*(\code{J}-1) containing all but the last row of \code{Delta}.}
 }
 \value{
-A numeric vector corresponding to the (JxJ)xJ matrix Delta.
+A numeric vector corresponding to the \code{J}x\code{J}^2 matrix \code{Delta}.
 }
 \description{
-Maps model parameters, psi, to the conditional distribution Y1, Y2 | Y*, Delta.
+Maps model parameters, psi, to Delta, the fully non-parametric  distribution of Y1, Y2 | Y*
 }

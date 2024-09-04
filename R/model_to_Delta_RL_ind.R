@@ -1,27 +1,25 @@
-#' Maps model parameters, psi, to the joint distribution of the data, theta.
+#' Maps model parameters, psi, to Delta, the distribution of Y1, Y2 | Y* under record linkage error structure.
 #'
-#' @param psi A numeric vector of length 2(J-1)+2J corresponding to the column and row scales of the record linkage.
-#' @return something
-#' @keywords internal
+#' @param psi A numeric vector of length 2(`J`-1)+2`J` corresponding to the column and row scales of the record linkage.
+#' @return A numeric vector of length `J`^3 corresponding to the values of the `J`x`J`^2 matrix `Delta`.
 #' @export
 model_to_Delta_RL_ind = function(psi){
 
   # J is a deterministic function of psi for model_to_Delta_RL_ind
   J = as.integer((length(psi) + 2)/4)
 
-  # Exponentiating to return to levels (psi in logs for numerical performance)
-  psi = exp(psi)
-
   # Extracting the row scales for Delta^{(1)} and Delta^{(2)}
-  row1 = psi[1:(J-1)]
-  row2 = psi[((J-1)+1):(2*(J-1))]
-  row1 = c(row1, 1-sum(row1)) # The last element forces the sum to 1
-  row2 = c(row2, 1-sum(row2)) # The last element forces the sum to 1
+  psi1 = c(psi[1:(J-1)],0) # Adding the reference value
+  psi2 = c(psi[((J-1)+1):(2*(J-1))],0) # Adding the reference value
+  row1 = exp(psi1)/sum(exp(psi1)) # logit link
+  row2 = exp(psi2)/sum(exp(psi2)) # logit link
 
   # Extracting the column scales for Delta^{(1)} and Delta^{(2)}
   psi = psi[-(1:(2*(J-1)))]
-  col1 = psi[1:J]
-  col2 = psi[(J+1):(2*J)]
+  psi1 = psi[1:J]
+  psi2 = psi[(J+1):(2*J)]
+  col1 = exp(psi1)/(1 + exp(psi1)) # Column margins are probabilities but need not sum to one
+  col2 = exp(psi2)/(1 + exp(psi2)) # Column margins are probabilities but need not sum to one
 
   # Building Delta^{(1)} and Delta^{(2)}
   Delta1 = diag(J)*(1-col1) + outer(row1,col1,"*")

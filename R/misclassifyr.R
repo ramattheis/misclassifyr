@@ -3,12 +3,13 @@
 #' This function provides a menu of options for estimation and inference of misclassification models in which the analyst has access to two noisy measures, `Y1` and `Y2` of a latent outcome `Y*`, a correctly measured covariate `X`, and discrete controls `W`.
 #'
 #' @import parallel
+#' @import numDeriv
 #'
 #' @param tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should be numeric with names `Y1`, `Y2`, `X`, and `n` where `Y1` and `Y2` take each value between `1` and `J`, `X` takes each value between `1` and `K`, and
 #' @param J An integer or list corresponding to the number of unique values of `Y1` and `Y2`.
 #' @param K An integer or list corresponding to the number of unique values of `X`.
-#' @param model_to_Pi A function or list of functions mapping the parameters of a model for the joint distribution to the joint distribution \Pi
-#' @param model_to_Delta A function or list of functions mapping the parameters of a model to the conditional distribution Y1, Y2 | Y*, \Delta
+#' @param model_to_Pi A function or list of functions mapping the parameters of a model for the joint distribution to the joint distribution `\eqn{\Pi}`.
+#' @param model_to_Delta A function or list of functions mapping the parameters of a model to the conditional distribution Y1, Y2 | Y*, `\eqn{\Delta}`.
 #' @param phi_0 A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Pi.
 #' @param psi_0 A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Delta.
 #' @param split_eta An integer or list indicating where to split the vector `eta` in `phi` and `psi`, the arguments to `model_to_Pi` and `model_to_Delta` respectively.
@@ -19,10 +20,15 @@
 #' @param estimate_betas A logical value indicating whether to regress Y on X within covariate cells.
 #' @param X_vals A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.
 #' @param Y_vals A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.
+#' @param optim_tol A numeric value giving the relative tolerance for optimization with the optim.
+#' @param optim_maxit An integer giving the maximum number of iterations for optim.
+#' @param bayesian A logical value indicating whether or not to compute the posterior of values.
+#' @param log_prior_Pi A function or list of functions evaluating the log of the prior of Pi at `phi` (in logs!).
+#' @param log_prior_Delta A function or list of functions evaluating the log of the prior of Delta at `psi` (in logs!).
 #' @param n_mcmc_draws An integer corresponding to the length of the MCMC chain.
 #' @param n_burnin An integer giving the length of the burn-in period for each MCMC chain, must be shorter than `n_mcmc_draws`.
 #' @param thinning_rate An integer indicating how frequently to record posterior draws from the MCMC chain -- e.g. a `thinning_rate` of 2 records every other draw.
-#' @param gibbs_proposal_sd An numeric value giving the standard deviation for the proposal distribution in each Gibbs step.
+#' @param gibbs_proposal_sd A numeric value giving the standard deviation for the proposal distribution in each Gibbs step.
 #' @param cores An integer for the number of CPUs available for parallel processing.
 #' @return An object that includes estimates and information from the estimation process
 #' @export
@@ -41,6 +47,11 @@ misclassifyr <- function(
     estimate_betas = F,
     X_vals = NA,
     Y_vals = NA,
+    optim_tol = 1e-8,
+    optim_maxit = 1e5,
+    bayesian = F,
+    prior_Pi = prior_Pi_NP,
+    prior_Delta = prior_Delta_NP_ind,
     n_mcmc_draws = 2e4,
     n_burnin = 1e4,
     thinning_rate = 2,
@@ -52,11 +63,16 @@ misclassifyr <- function(
   # other input errors caught in MisclassMLE()
   #------------------------------------------------------------
 
+  if(class(bayesian) != "logical"){stop("Error: `bayesian` should be TRUE or FALSE.")}
+
   if(!identical(cores%%1,0)){
     stop("Error: `cores` should be an integer.")
   } else if(parallel::detectCores() < cores){
     stop("Error: You requested more cores than appear available on your machine.")
   }
+
+  if(!identical(optim_maxit%%1,0)){ stop("Error: `optim_maxit` should be an integer.") }
+  if(identical(as.numeric(),NA)){ stop("Error: `gibbs_proposal_sd` should be numeric.") }
 
   if(!identical(n_mcmc_draws%%1,0)){ stop("Error: `n_mcmc_draws` should be an integer.") }
   if(!identical(n_burnin%%1,0)){ stop("Error: `n_burnin` should be an integer.") }
@@ -244,28 +260,34 @@ misclassifyr <- function(
           as.data.frame()
         tab_xy = tab_xy[order(tab_xy$Y1, tab_xy$X),]
         tab_xy$p = tab_xy$n/sum(tab_xy$n)
-        phi_0 = softlog(tab_xy$p[1:(J*K-1)])
+        phi_0 = softlog(tab_xy$p[1:(J*K-1)] /tab_xy$p[J*K])
 
         # Default starting location for phi_0 is flat
-        #phi_0 = softlog(rep(1/(J*K), J*K-1 ))
+        # phi_0 = softlog(rep(1/(J*K), J*K-1 )/(1/(J*K)) )
       }
     }
 
     if(identical(psi_0,NA)){
       if(identical(attr(model_to_Delta,"name"),"model_to_Delta_RL_ind")){
         # Default starting location for psi_0 is uniform margin and 4/5 diagonal
-        row_0 = rep(1/J,J)
+        row_0 = rep(1/J,J-1)
         col_0 = rep(1/5,J)
-        psi_0 = log(c(row_0[-J],row_0[-J],col_0,col_0))
-        rm(list = c("row_0","col_0"))
+        row_1 = softlog(row_0 / (1/J))
+        row_2 = softlog(row_0 / (1/J))
+        col_1 = softlog(col_0 / (1-col_0))
+        col_2 = softlog(col_0 / (1-col_0))
+        psi_0 = c(row_1,row_2,col_1,col_2)
+        rm(list = c("row_0","row_1","row_2","col_0","col_1","col_2"))
       }
       if(identical(attr(model_to_Delta,"name"),"model_to_Delta_NP_ind")){
         # Default starting location for psi_0 is RL with uniform margin and 4/5 diagonal
         row_0 = rep(1/J,J)
         col_0 = rep(1/5,J)
         Delta_0 = diag(J)*(1-col_0) + outer(row_0,col_0,"*")
-        psi_0 = log(c(c(Delta_0[-J,]),c(Delta_0[-J,])))
-        rm(list = c("row_0","col_0","Delta_0"))
+        Delta_1 = apply(Delta_0,2, function(d) softlog(d / d[length(d)]) )
+        Delta_2 = apply(Delta_0,2, function(d) softlog(d / d[length(d)]) )
+        psi_0 = c(c(Delta_1[-J,]),c(Delta_2[-J,]))
+        rm(list = c("row_0","col_0","Delta_0","Delta_1","Delta_2"))
       }
       if(identical(attr(model_to_Delta,"name"),"model_to_Delta_NP")){
         # Default starting location for psi_0 is RL with uniform margin and 4/5 diagonal
@@ -275,7 +297,8 @@ misclassifyr <- function(
         # Building the joint distribution Y1, Y2 conditional on Y*
         Delta_0 = lapply(1:ncol(Delta_0), function(j) diag(Delta_0[j,]) %*% t(Delta_0))
         Delta_0 = do.call(cbind, Delta_0)
-        psi_0 = log(c(Delta_0[,-J^2]))
+        Delta_0 = t(apply(Delta_0,1,function(d) softlog(d / d[length(d)])))
+        psi_0 = c(Delta_0[,-J^2])
         rm(list = c("row_0","col_0","Delta_0"))
       }
     }
@@ -313,13 +336,12 @@ misclassifyr <- function(
 
     prior = function(eta){
 
-      # Mapping model arguments to the entries of the joint distribution
-      Pi_ = model_to_Pi(eta[1:(split_eta-1)], J, K)
-      Delta_ = model_to_Delta(eta[(split_eta):length(eta)])
+      # computing the prior for Pi and Delta at phi and psi separately
+      prior_Pi_val = prior_Pi(eta[1:(split_eta - 1)])
+      prior_Delta_val = prior_Delta(eta[split_eta:length(eta)])
 
-      # A flat prior in levels implies an exponential density in logs,
-      # and a flat density in logs (so just returning the sum of logs)
-      return(sum(softlog(c(Pi_,Delta_))))
+      # Returning the sum of the prior
+
 
     }
 

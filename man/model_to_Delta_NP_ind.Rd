@@ -2,16 +2,16 @@
 % Please edit documentation in R/model_to_Delta_NP_ind.R
 \name{model_to_Delta_NP_ind}
 \alias{model_to_Delta_NP_ind}
-\title{Maps model parameters, psi, to the conditional distribution Y1, Y2 | Y*, Delta.}
+\title{Maps model parameters, psi, to Delta, the distribution of Y1, Y2 | Y* under conditional independence of Y1, Y2 on Y}
 \usage{
 model_to_Delta_NP_ind(psi)
 }
 \arguments{
-\item{psi}{A numeric vector of length 2xJx(J-1) containing Delta^{(1)} and Delta^{(2)}.}
+\item{psi}{A numeric vector of length 2x\code{J}x(\code{J}-1) containing Delta^{(1)} and Delta^{(2)}.}
 }
 \value{
-A numeric vector corresponding to the (JxJ)xJ matrix Delta. d
+A numeric vector of length \code{J}^3 corresponding to the values of the \code{J}x\code{J}^2 matrix \code{Delta}.
 }
 \description{
-Maps model parameters, psi, to the conditional distribution Y1, Y2 | Y*, Delta.
+Maps model parameters, psi, to Delta, the distribution of Y1, Y2 | Y* under conditional independence of Y1, Y2 on Y
 }

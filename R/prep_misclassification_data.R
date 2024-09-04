@@ -2,6 +2,8 @@
 #'
 #' This function tabulates data and generates metadata in a format to be used with the misclassifyr() function.
 #'
+#' @import dplyr
+#'
 #' @param data A data.frame containing the outcome variable,
 #' @param outcome_1 A character string denoting the variable in the dataframe to be used as the first measure of an outcome, Y_1.
 #' @param outcome_2 A character string denoting the variable in the dataframe to be used as the second measure of an outcome, Y_2.

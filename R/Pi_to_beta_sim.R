@@ -5,7 +5,7 @@
 #' @param Y_vals A numeric vector or a list of numeric vectors representing the scalar values associated with Y.
 #' @param W_weights A numeric vector representing the sample size of each control cell.
 #' @return A scalar equal to beta.
-#' @export
+#' @keywords internal
 Pi_to_beta_sim = function(Pi, X_vals, Y_vals, W_weights){
 
   #------------------------------------------------------------

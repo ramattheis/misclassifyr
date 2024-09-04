@@ -2,24 +2,16 @@
 % Please edit documentation in R/model_to_Delta_RL_ind.R
 \name{model_to_Delta_RL_ind}
 \alias{model_to_Delta_RL_ind}
-\title{Maps model parameters, psi, to the joint distribution of the data, theta.}
+\title{Maps model parameters, psi, to Delta, the distribution of Y1, Y2 | Y* under record linkage error structure.}
 \usage{
 model_to_Delta_RL_ind(psi)
 }
 \arguments{
-\item{psi}{A numeric vector of length 2(J-1)+2J corresponding to the column and row scales of the record linkage.}
+\item{psi}{A numeric vector of length 2(\code{J}-1)+2\code{J} corresponding to the column and row scales of the record linkage.}
 }
 \value{
-something
+A numeric vector of length \code{J}^3 corresponding to the values of the \code{J}x\code{J}^2 matrix \code{Delta}.
 }
 \description{
-Longer description of what it does...
-}
-\details{
-some details.
-}
-\examples{
-\dontrun{
-some example code # Should return something
-}
+Maps model parameters, psi, to Delta, the distribution of Y1, Y2 | Y* under record linkage error structure.
 }

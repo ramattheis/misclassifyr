@@ -19,13 +19,6 @@ Pi_to_beta_sim(Pi, X_vals, Y_vals, W_weights)
 A scalar equal to beta.
 }
 \description{
-Longer description of what it does...
+Maps the joint distribution, Pi, of X and Y* to a scalar, beta via simulation
 }
-\details{
-some details.
-}
-\examples{
-\dontrun{
-some example code # Should return something
-}
-}
+\keyword{internal}

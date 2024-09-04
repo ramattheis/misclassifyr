@@ -4,14 +4,14 @@
 \alias{model_to_Pi_NP}
 \title{Maps model parameters, phi, to the joint distribution of X and Y*, Pi.}
 \usage{
-model_to_Pi_NP(phi)
+model_to_Pi_NP(phi, J, ...)
 }
 \arguments{
 \item{phi}{A numeric vector.}
 
 \item{J}{An integer corresponding to the dimension of Y.}
 
-\item{K}{An integer corresponding to the dimension of X.}
+\item{...}{Additional, optional arguments.}
 }
 \value{
 A numeric vector corresponding to the JxK matrix Pi

@@ -4,10 +4,20 @@
 \alias{loglikelihood}
 \title{Returns the log likelihood of the data.}
 \usage{
-loglikelihood(theta)
+loglikelihood(theta, tab, J, K, lambda_pos, lambda_dd)
 }
 \arguments{
 \item{theta}{A numeric vector of length  Jx(J^2+K) describing the joint distribution of the data.}
+
+\item{tab}{A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should be numeric with names \code{Y1}, \code{Y2}, \code{X}, and \code{n} where \code{Y1} and \code{Y2} take each value between 1 and \code{J}, \code{X} takes each value between \code{1} and \code{K}, and}
+
+\item{J}{An integer or list corresponding to the number of unique values of \code{Y1} and \code{Y2}.}
+
+\item{K}{An integer or list corresponding to the number of unique values of \code{X}.}
+
+\item{lambda_pos}{A numeric value scaling a violations of positivity for the entries of Pi and Delta.}
+
+\item{lambda_dd}{A numeric value scaling a violations of diagonal dominance for Delta.}
 }
 \value{
 the log likelihood of the data given theta, i.e. Pi and Delta.
@@ -15,3 +25,4 @@ the log likelihood of the data given theta, i.e. Pi and Delta.
 \description{
 Returns the log likelihood of the data.
 }
+\keyword{internal}
