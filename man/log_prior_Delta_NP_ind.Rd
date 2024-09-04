@@ -2,7 +2,7 @@
 % Please edit documentation in R/log_prior_Delta_NP_ind.R
 \name{log_prior_Delta_NP_ind}
 \alias{log_prior_Delta_NP_ind}
-\title{Evaluates the log of the prior of Delta at model_to_Delta_NP_ind(psi).}
+\title{Evaluates the log of the prior of Delta at model_to_Delta_NP_ind of psi.}
 \usage{
 log_prior_Delta_NP_ind(psi)
 }
@@ -13,5 +13,5 @@ log_prior_Delta_NP_ind(psi)
 A numeric value equal to the log of the flat prior of \code{Delta} at \code{psi}, re-scaled for the logit transform.
 }
 \description{
-Evaluates the log of the prior of Delta at model_to_Delta_NP_ind(psi).
+Evaluates the log of the prior of \eqn{\Delta} at model_to_Delta_NP_ind(psi).
 }

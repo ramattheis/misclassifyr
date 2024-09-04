@@ -1,4 +1,6 @@
-#' Evaluates the log of the prior of Delta at model_to_Delta_NP_ind(psi).
+#' Evaluates the log of the prior of Delta at model_to_Delta_NP_ind of psi.
+#'
+#' Evaluates the log of the prior of \eqn{\Delta} at model_to_Delta_NP_ind(psi).
 #'
 #' @param psi A numeric vector parameterizing `Delta` through `model_to_Delta_NP_ind`.
 #' @return A numeric value equal to the log of the flat prior of `Delta` at `psi`, re-scaled for the logit transform.
