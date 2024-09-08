@@ -3,6 +3,7 @@
 #' @param x A numeric vector in logit-space corresponding to some .
 #' @return A numeric value equal to the log of the determinant of the Jacobian of the logit transform.
 #' @keywords internal
+#' @export
 logit_link_volume = function(x){
 
   # Applying the logit link

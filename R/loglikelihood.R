@@ -4,11 +4,11 @@
 #' @param tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should be numeric with names `Y1`, `Y2`, `X`, and `n` where `Y1` and `Y2` take each value between 1 and `J`, `X` takes each value between `1` and `K`, and
 #' @param J An integer or list corresponding to the number of unique values of `Y1` and `Y2`.
 #' @param K An integer or list corresponding to the number of unique values of `X`.
-#' @param lambda_pos A numeric value scaling a violations of positivity for the entries of Pi and Delta.
 #' @param lambda_dd A numeric value scaling a violations of diagonal dominance for Delta.
 #' @return the log likelihood of the data given theta, i.e. Pi and Delta.
 #' @keywords internal
-loglikelihood = function(theta,tab,J,K,lambda_pos,lambda_dd){
+#' @export
+loglikelihood = function(theta,tab,J,K,lambda_dd){
 
   # Building Pi
   Pi = theta[1:(J*K)]       # Extracting all but the last entry of Pi

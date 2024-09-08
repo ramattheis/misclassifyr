@@ -4,7 +4,7 @@
 \alias{loglikelihood}
 \title{Returns the log likelihood of the data.}
 \usage{
-loglikelihood(theta, tab, J, K, lambda_pos, lambda_dd)
+loglikelihood(theta, tab, J, K, lambda_dd)
 }
 \arguments{
 \item{theta}{A numeric vector of length  Jx(J^2+K) describing the joint distribution of the data.}
@@ -14,8 +14,6 @@ loglikelihood(theta, tab, J, K, lambda_pos, lambda_dd)
 \item{J}{An integer or list corresponding to the number of unique values of \code{Y1} and \code{Y2}.}
 
 \item{K}{An integer or list corresponding to the number of unique values of \code{X}.}
-
-\item{lambda_pos}{A numeric value scaling a violations of positivity for the entries of Pi and Delta.}
 
 \item{lambda_dd}{A numeric value scaling a violations of diagonal dominance for Delta.}
 }

@@ -1,7 +1,5 @@
 #' Generates synthetic misclassification data.
 #'
-#' Longer description of what it does...
-#'
 #' @param J An integer indicating the dimension of Y.
 #' @param K An integer indicating the dimension of X.
 #' @param I An integer indicating the dimension of W.
@@ -9,11 +7,7 @@
 #' @param dgp_delta A character string indicating the data generating process for the synthetic noise
 #' @param dgp_pi A character string indicating the data generating process for the joint distribution of X and Y*
 #' @return A list including tabulated data `tab` and matrices `Pi`, `Delta`
-#' @details some details...
-#' @examples
-#' \dontrun{
-#' some example code # Should return something
-#' }
+#' @keywords internal
 #' @export
 synthetic_data = function(J=5,
                           K=5,

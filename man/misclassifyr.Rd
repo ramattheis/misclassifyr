@@ -10,6 +10,7 @@ misclassifyr(
   K,
   model_to_Pi = model_to_Pi_NP,
   model_to_Delta = model_to_Delta_NP_ind,
+  makeplots = T,
   phi_0 = NA,
   psi_0 = NA,
   X_names = NA,
@@ -19,14 +20,19 @@ misclassifyr(
   estimate_betas = F,
   X_vals = NA,
   Y_vals = NA,
+  X_col_name = "X",
+  Y_col_name = "Y",
+  mle = T,
   optim_tol = 1e-08,
   optim_maxit = 1e+05,
+  check_stability = F,
+  stability_sd = 0.1,
   bayesian = F,
-  prior_Pi = prior_Pi_NP,
-  prior_Delta = prior_Delta_NP_ind,
-  n_mcmc_draws = 20000,
-  n_burnin = 10000,
-  thinning_rate = 2,
+  log_prior_Pi = log_prior_Pi_NP,
+  log_prior_Delta = log_prior_Delta_NP_ind,
+  n_mcmc_draws = 10000,
+  n_burnin = 5000,
+  thinning_rate = 1,
   gibbs_proposal_sd = 0.1,
   cores = 1
 )
@@ -42,6 +48,8 @@ misclassifyr(
 
 \item{model_to_Delta}{A function or list of functions mapping the parameters of a model to the conditional distribution Y1, Y2 | Y*, \verb{\eqn{\Delta}}.}
 
+\item{makeplots}{A logical value for whether to make trace plots and plots of \eqn{\Pi} and \eqn{Delta}. Defaults to TRUE.}
+
 \item{phi_0}{A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Pi.}
 
 \item{psi_0}{A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Delta.}
@@ -54,17 +62,29 @@ misclassifyr(
 
 \item{estimate_beta}{A logical value indicating whether to regress Y on X.}
 
-\item{estimate_betas}{A logical value indicating whether to regress Y on X within covariate cells.}
-
 \item{X_vals}{A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.}
 
 \item{Y_vals}{A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.}
+
+\item{X_col_name}{A character vector corresponding to the variable of the regressor X, used only for plots.}
+
+\item{Y_col_name}{A character vector corresponding to the variable of the outcome Y, used only for plots.}
+
+\item{mle}{A logical value indicating whether to estimate Pi and Delta via MLE. Defaults to TRUE.}
 
 \item{optim_tol}{A numeric value giving the relative tolerance for optimization with the optim.}
 
 \item{optim_maxit}{An integer giving the maximum number of iterations for optim.}
 
+\item{check_stability}{A logical value indicating whether to perform a more rigorous stability test for the numerical optimizer.}
+
+\item{stability_sd}{A numerical value giving the standard deviation of the noise added to the initial parameter value for the stability test of the MLE.}
+
 \item{bayesian}{A logical value indicating whether or not to compute the posterior of values.}
+
+\item{log_prior_Pi}{A function or list of functions evaluating the log of the prior of Pi at \code{phi} (in logs!).}
+
+\item{log_prior_Delta}{A function or list of functions evaluating the log of the prior of Delta at \code{psi} (in logs!).}
 
 \item{n_mcmc_draws}{An integer corresponding to the length of the MCMC chain.}
 
@@ -77,13 +97,12 @@ misclassifyr(
 \item{cores}{An integer for the number of CPUs available for parallel processing.}
 
 \item{split_eta}{An integer or list indicating where to split the vector \code{eta} in \code{phi} and \code{psi}, the arguments to \code{model_to_Pi} and \code{model_to_Delta} respectively.}
-
-\item{log_prior_Pi}{A function or list of functions evaluating the log of the prior of Pi at \code{phi} (in logs!).}
-
-\item{log_prior_Delta}{A function or list of functions evaluating the log of the prior of Delta at \code{psi} (in logs!).}
 }
 \value{
-An object that includes estimates and information from the estimation process
+A list containing the following components:
+\itemize{
+\item \verb{$Pi_hat_MLE}: The MLE estimate of the joint distribution of \eqn{X} and \eqn{Y^*}, \eqn{\Pi}.
+}
 }
 \description{
 This function provides a menu of options for estimation and inference of misclassification models in which the analyst has access to two noisy measures, \code{Y1} and \code{Y2} of a latent outcome \verb{Y*}, a correctly measured covariate \code{X}, and discrete controls \code{W}.
