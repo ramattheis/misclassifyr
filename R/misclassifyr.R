@@ -142,8 +142,8 @@ misclassifyr <- function(
     # Throwing an error if tab is not a list (nothing should be a list if tab is not a list)
     if(subset(input_types, object == "tab")$type != "list"){stop("Error: No arguments should be lists if `tab` is not a list.")}
     if(!all(input_types$type == "list")){
-      # Returning a warning that some objects will be copied.
-      warning(paste0("The following objects were not provided as a list and will be copied across covariate cells: ",
+      # Returning a message that some objects will be copied.
+      message(paste0("The following objects were not provided as a list and will be copied across covariate cells: ",
                      paste0(subset(input_types, type != "list")$object, collapse = ", ")))
       # Determining the length of each provided list
       list_lengths = sapply(subset(input_types, type == "list")$object,
@@ -166,7 +166,7 @@ misclassifyr <- function(
 
 
   #-----------------------------
-  # Converting inputs to a list (or list of lists)  for MisclassMLE
+  # Converting inputs to a list (or list of lists)  for estimate_misclassification
   #-----------------------------
 
   if(class(tab) == "list"){
@@ -648,8 +648,6 @@ misclassifyr <- function(
           return(trace_plot)
         }
 
-        # Alt col "#86AFDB" "#84BBDD"
-
         # Trace plots for eta
         trace_plots_eta = lapply(1:ncol(posterior_eta), function(j) traceplots(posterior_eta[,j], paste0("eta_",j)))
         names(trace_plots_eta) = paste0("eta_",1:ncol(posterior_eta))
@@ -742,15 +740,16 @@ misclassifyr <- function(
     # Setting up parallel processing
     workers = parallel::makeCluster(cores)
 
-    # Teaching the workers estimate_misclassification
+    # Teaching the workers misclassifyr
     parallel::clusterEvalQ(workers, require(misclassifyr)) |> invisible()
-    parallel::clusterExport(workers, "estimate_misclassification") |> invisible()
 
     # Exporting common objects to workers
-    common_objects = c("makeplots","mle","optim_maxit","optim_tol","check_stability","stability_sd",
+    common_objects = c("estimate_misclassification", "makeplots","mle","optim_maxit","optim_tol","check_stability","stability_sd",
                        "bayesian","n_mcmc_draws", "n_burnin","thinning_rate", "gibbs_proposal_sd",
                        "log_prior_Pi", "log_prior_Delta")
-    parallel::clusterExport(workers, common_objects) |> invisible()
+    for (obj in common_objects) { # exporting workers from the local environment one by one
+      parallel::clusterExport(workers, varlist = obj, envir = environment()) |> invisible()
+    }
 
     # Drawing from the posterior of Pi and Delta within covariate cells
     misclassification_out = pbapply::pblapply(
