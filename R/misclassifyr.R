@@ -187,7 +187,7 @@ misclassifyr <- function(
       ))
 
   } else {
-    # Bundling inputs into a list for MisclassMLE
+    # Bundling inputs into a list
     misclassification_inputs = list(
       tab = tab,
       J = J,
@@ -552,7 +552,7 @@ misclassifyr <- function(
       #------------------------------------------------------------
 
       # Extracting the posterior for eta
-      posterior_eta = do.call(rbind,gibbs.env$eta_history[(n_burnin/thinning_rate):length(gibbs.env$eta_history)])
+      posterior_eta = do.call(rbind,gibbs.env$eta_history[(n_burnin/thinning_rate+1):length(gibbs.env$eta_history)])
 
       # Defining functions for extracting Pi and Delta from eta_hat
       eta_hat_to_Pi_hat = function(eta_hat, draw){
@@ -620,8 +620,14 @@ misclassifyr <- function(
       # Building the posterior for Delta
       posterior_Delta = do.call(rbind,lapply(1:nrow(posterior_eta), function(d) eta_hat_to_Delta_hat(posterior_eta[d,],d)))
 
+      # Renaming draws to match MCMC history
+      posterior_Pi$draw = n_burnin + thinning_rate*posterior_Pi$draw
+      posterior_Delta$draw = n_burnin + thinning_rate*posterior_Delta$draw
+
       # Recording the history of log likelihood
-      ll_history = unlist(gibbs.env$ll_history)
+      ll_history = unlist(gibbs.env$ll_history) |> as.data.frame()
+      colnames(ll_history) = "ll"
+      ll_history$draw = thinning_rate*c(1:nrow(ll_history))
 
       # Recording
       accepted_proposals = gibbs.env$accepted_proposals
@@ -781,7 +787,7 @@ misclassifyr <- function(
   } else {
 
     # Estimating Pi and Delta for the full population
-    misclassification_output = MisclassMLE(misclassification_inputs)
+    misclassification_output = estimate_misclassification(misclassification_inputs)
 
   }
 
@@ -1155,6 +1161,23 @@ misclassifyr <- function(
         )
         names(posterior_betas) = W_names
 
+        # Computing Chen, Christensen, and Tamer Partial ID-robust CI
+
+        # Summing the likelihood history across covariate cells
+        ll_history = sapply(unique(misclassification_output$posterior_Pi[[1]]$draw), function(d) {
+          # For each draw 'd', loop over all control cells 'w' and sum the likelihood
+          sum(sapply(seq_along(W_names), function(w) {
+            # Subset the ll_history for the current control cell 'w' and draw 'd'
+            subset(misclassification_output$ll_history[[w]], draw == d)$ll
+          }))
+        })
+
+        # sort ll_history to find top 95%
+        ll_sorted = sort(ll_history, decreasing = F)
+        ll_critical = ll_sorted[floor(length(ll_sorted)*0.05) ]
+        CCT_draws = unique(misclassification_output$posterior_Pi[[1]]$draw[ll_history > ll_critical])
+        CCTCI = c(min(posterior_beta[ll_history > ll_critical]), max(posterior_beta[ll_history > ll_critical]) )
+
         # Extracting the median and the sd
         posterio_betas_med = lapply(posterior_betas, median)
         posterio_betas_sd = lapply(posterior_betas, sd)
@@ -1168,6 +1191,20 @@ misclassifyr <- function(
              weight = subset(misclassification_output$posterior_Pi, draw == d)$Pi_hat
              )$coefficients[2] |> unname()
           )
+
+        # Computing Chen, Christensen, and Tamer Partial ID-robust CI
+
+        # Summing the likelihood history across covariate cells
+        ll_history = sapply(unique(misclassification_output$posterior_Pi$draw), function(d) {
+          # For each draw 'd' sum the likelihood
+          sum(subset(misclassification_output$ll_history, draw == d)$ll)
+        })
+
+        # sort ll_history to find top 95%
+        ll_sorted = sort(ll_history, decreasing = F)
+        ll_critical = ll_sorted[floor(length(ll_sorted)*0.05) ]
+        CCT_draws = unique(misclassification_output$posterior_Pi$draw[ll_history > ll_critical])
+        CCTCI = c(min(posterior_beta[ll_history > ll_critical]), max(posterior_beta[ll_history > ll_critical]) )
 
         # Recording the median and SD
         posterior_beta_med = median(posterior_beta)
@@ -1189,6 +1226,8 @@ misclassifyr <- function(
       posterior_betas = NA
       posterior_betas_med = NA
       posterior_betas_sd = NA
+      CCT_draws = NA
+      CCTCI = NA
 
     }
 
@@ -1206,6 +1245,8 @@ misclassifyr <- function(
     posterior_betas = NA
     posterior_betas_med = NA
     posterior_betas_sd = NA
+    CCT_draws = NA
+    CCTCI = NA
 
   }
 
@@ -1231,7 +1272,9 @@ misclassifyr <- function(
         posterior_beta_sd = posterior_beta_sd,
         posterior_betas = posterior_betas,
         posterior_betas_med = posterior_betas_med,
-        posterior_betas_sd = posterior_betas_sd
+        posterior_betas_sd = posterior_betas_sd,
+        CCT_draws = CCT_draws,
+        CCTCI = CCTCI
       )
     )
   )
