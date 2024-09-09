@@ -1,2 +1,3 @@
-^misclassifyr\.Rproj$
+^misc$
+^.*\.Rproj$
 ^\.Rproj\.user$

@@ -16,6 +16,7 @@ Imports:
     parallel,
     pbapply,
     numDeriv,
+    pracma,
     Matrix
 Suggests: 
     testthat (>= 3.0.0)

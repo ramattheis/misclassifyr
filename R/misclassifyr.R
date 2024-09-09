@@ -1179,8 +1179,10 @@ misclassifyr <- function(
         CCTCI = c(min(posterior_beta[ll_history > ll_critical]), max(posterior_beta[ll_history > ll_critical]) )
 
         # Extracting the median and the sd
-        posterio_betas_med = lapply(posterior_betas, median)
-        posterio_betas_sd = lapply(posterior_betas, sd)
+        posterior_beta_med = median(posterior_beta)
+        posterior_beta_sd = sd(posterior_beta)
+        posterior_betas_med = lapply(posterior_betas, median)
+        posterior_betas_sd = lapply(posterior_betas, sd)
 
       } else {
 
