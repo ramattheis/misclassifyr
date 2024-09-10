@@ -53,7 +53,6 @@ misclassifyr <- function(
     Y_names = NA,
     W_names = NA,
     estimate_beta = F,
-    estimate_betas = F,
     X_vals = NA,
     Y_vals = NA,
     X_col_name = "X",
@@ -360,6 +359,9 @@ misclassifyr <- function(
       # Optimizing objective w.r.t. eta
       #------------------------------------------------------------
 
+      # Quick update to the user
+      message("Estimating the misclassification model via maximum likelihood...\n")
+
       # Optimizing with standard quasi-newton
       mle_out = optim(
         par = eta_0,
@@ -397,6 +399,9 @@ misclassifyr <- function(
 
       # Initializing total inconsistency
       inconsistency = 0
+
+      # Quick update to the user
+      message("Assessing the stability of the MLE...\n")
 
       for(draw in 1:extra_starting_points){
 
@@ -527,6 +532,10 @@ misclassifyr <- function(
       #------------------------------------------------------------
       # Exploring the posterior of Pi and Delta via Gibbs-MCMC
       #------------------------------------------------------------
+
+      # Quick update to the user
+      message("Sampling from the posterior of Pi and Delta...\n")
+      message("This might take a while---feel free to grab a coffee / tea / walk / etc...\n")
 
       while(gibbs.env$counter < n_mcmc_draws){
 
@@ -757,6 +766,10 @@ misclassifyr <- function(
       parallel::clusterExport(workers, varlist = obj, envir = environment()) |> invisible()
     }
 
+    # Quick update to the user...
+    message("Estimating the misclassification model within covariate cells...\n")
+    message("This might take a while---feel free to grab a coffee / tea / walk / etc... \n")
+
     # Drawing from the posterior of Pi and Delta within covariate cells
     misclassification_out = pbapply::pblapply(
       misclassification_inputs,
@@ -814,28 +827,30 @@ misclassifyr <- function(
           # Averaging Pi across covariate cells
           Pi_hat_mle_plot_df = do.call(cbind, misclassification_output$Pi_hat_mle) %*% W_weights |> c() |> as.data.frame()
           colnames(Pi_hat_mle_plot_df) = c("Pi_hat")
-          Pi_hat_mle_plot_df$X = c(sapply(misclassification_output$X_names[[1]], function(xn) rep(xn, misclassification_output$J[[1]])))
-          Pi_hat_mle_plot_df$Y = rep(misclassification_output$Y_names[[1]], misclassification_output$J[[1]])
+          Pi_hat_mle_plot_df$X = as.factor(c(sapply(misclassification_output$X_names[[1]], function(xn) rep(xn, misclassification_output$J[[1]]))))
+          Pi_hat_mle_plot_df$Y = as.factor(rep(misclassification_output$Y_names[[1]], misclassification_output$J[[1]]))
+
+          # Building a matrix to marginalize Delta over Y2
+          candycane = do.call(rbind, lapply(1:misclassification_output$J[[1]],
+                                            function(x) diag(misclassification_output$J[[1]])))
 
           # Averaging Delta across covariate cells
           Delta_hat_mle_plot_df = do.call(
             cbind,
             lapply(misclassification_output$Delta_hat_mle,
-                   function(Delta) apply(
-                     matrix(Delta, nrow = misclassification_output$J[[1]]),
-                     2, sum))
+                   function(Delta) c(matrix(Delta, nrow = misclassification_output$J[[1]]) %*% candycane))
             ) %*% W_weights |>c() |> as.data.frame()
           colnames(Delta_hat_mle_plot_df) = c("Delta_hat")
-          Delta_hat_mle_plot_df$Ys = c(sapply(misclassification_output$Y_names[[1]], function(xn) rep(xn, misclassification_output$J[[1]])))
-          Delta_hat_mle_plot_df$Y1 = rep(misclassification_output$Y_names[[1]], misclassification_output$J[[1]])
+          Delta_hat_mle_plot_df$Y1 = c(sapply(misclassification_output$Y_names[[1]], function(xn) rep(xn, misclassification_output$J[[1]]))) |> as.factor()
+          Delta_hat_mle_plot_df$Ys = rep(misclassification_output$Y_names[[1]], misclassification_output$J[[1]]) |> as.factor()
 
           # Plotting the joint distribution of X and Y*
           Pi_hat_mle_plot = ggplot2::ggplot(Pi_hat_mle_plot_df,
                                             ggplot2::aes(x = X,y = Y, fill = Pi_hat ) ) +
             ggplot2::geom_raster(show.legend = F) +
-            ggplot2::scale_fill_gradient(low="#EDF3FF", high="#002676") +
+            ggplot2::scale_fill_gradient(low="#FAFBFF", high="#002676") +
             ggplot2::geom_text(ggplot2::aes(label = round(Pi_hat,2),
-                          color = Pi_hat > median(Pi_hat) )) +
+                          color = Pi_hat > mean(Pi_hat) )) +
             ggplot2::scale_color_manual(guide = "none", values = c("black", "white")) +
             ggplot2::labs(x = X_col_name, y = Y_col_name) +
             ggplot2::theme_minimal() +
@@ -847,7 +862,7 @@ misclassifyr <- function(
           Delta_hat_mle_plot = ggplot2::ggplot(Delta_hat_mle_plot_df,
                                                ggplot2::aes(x = Ys,y = Y1, fill = Delta_hat)) +
             ggplot2::geom_raster(show.legend = F) +
-            ggplot2::scale_fill_gradient(low="#EDF3FF", high="#002676", limits= c(0,1)) +
+            ggplot2::scale_fill_gradient(low="#FAFBFF", high="#002676", limits= c(0,1)) +
             ggplot2::geom_text(ggplot2::aes(label = round(Delta_hat,2),
                                             color = Delta_hat > 0.5 )) +
             ggplot2::scale_color_manual(guide = "none", values = c("black", "white")) +
@@ -864,25 +879,29 @@ misclassifyr <- function(
 
       } else {
 
-        # Averaging Pi across covariate cells
+        # Preparing Pi estimates for a plot
         Pi_hat_mle_plot_df = c(misclassification_output$Pi_hat_mle) |> as.data.frame()
         colnames(Pi_hat_mle_plot_df) = c("Pi_hat")
-        Pi_hat_mle_plot_df$X = c(sapply(misclassification_output$X_names, function(xn) rep(xn, misclassification_output$J)))
-        Pi_hat_mle_plot_df$Y = rep(misclassification_output$Y_names, misclassification_output$J)
+        Pi_hat_mle_plot_df$X = c(sapply(misclassification_output$X_names, function(xn) rep(xn, misclassification_output$J)))  |> as.factor()
+        Pi_hat_mle_plot_df$Y = rep(misclassification_output$Y_names, misclassification_output$J) |> as.factor()
 
-        # Averaging Delta across covariate cells
-        Delta_hat_mle_plot_df = apply( matrix(misclassification_output$Delta_hat_mle, nrow = misclassification_output$J),2, sum) |> c() |> as.data.frame()
+        # Building a matrix to marginalize Delta over Y2
+        candycane = do.call(rbind, lapply(1:misclassification_output$J,
+                                          function(x) diag(misclassification_output$J)))
+
+        # Marginalizing Delta over Y2 and preparing for a plot
+        Delta_hat_mle_plot_df = c(matrix(misclassification_output$Delta_hat_mle, nrow = misclassification_output$J) %*% candycane) |> as.data.frame()
         colnames(Delta_hat_mle_plot_df) = c("Delta_hat")
-        Delta_hat_mle_plot_df$Ys = c(sapply(misclassification_output$Y_names, function(xn) rep(xn, misclassification_output$J)))
-        Delta_hat_mle_plot_df$Y1 = rep(misclassification_output$Y_names, misclassification_output$J)
+        Delta_hat_mle_plot_df$Y1 = c(sapply(misclassification_output$Y_names, function(xn) rep(xn, misclassification_output$J))) |> as.factor()
+        Delta_hat_mle_plot_df$Ys = rep(misclassification_output$Y_names, misclassification_output$J) |> as.factor()
 
         # Plotting the joint distribution of X and Y*
         Pi_hat_mle_plot = ggplot2::ggplot(Pi_hat_mle_plot_df,
                                           ggplot2::aes(x = X,y = Y, fill = Pi_hat ) ) +
           ggplot2::geom_raster(show.legend = F) +
-          ggplot2::scale_fill_gradient(low="#EDF3FF", high="#002676") +
+          ggplot2::scale_fill_gradient(low="#FAFBFF", high="#002676") +
           ggplot2::geom_text(ggplot2::aes(label = round(Pi_hat,2),
-                                          color = Pi_hat > median(Pi_hat) )) +
+                                          color = Pi_hat > mean(Pi_hat) )) +
           ggplot2::scale_color_manual(guide = "none", values = c("black", "white")) +
           ggplot2::labs(x = X_col_name, y = Y_col_name) +
           ggplot2::theme_minimal() +
@@ -894,7 +913,7 @@ misclassifyr <- function(
         Delta_hat_mle_plot = ggplot2::ggplot(Delta_hat_mle_plot_df,
                                              ggplot2::aes(x = Ys,y = Y1, fill = Delta_hat)) +
           ggplot2::geom_raster(show.legend = F) +
-          ggplot2::scale_fill_gradient(low="#EDF3FF", high="#002676", limits= c(0,1)) +
+          ggplot2::scale_fill_gradient(low="#FAFBFF", high="#002676", limits= c(0,1)) +
           ggplot2::geom_text(ggplot2::aes(label = round(Delta_hat,2),
                                           color = Delta_hat > 0.5 )) +
           ggplot2::scale_color_manual(guide = "none", values = c("black", "white")) +
@@ -936,9 +955,13 @@ misclassifyr <- function(
                                                        .groups = "drop") |>
                                       as.data.frame())
           posterior_Pi_mean_plot_df = posterior_Pi_mean[[1]][,c("X_name","Y_name")]
+
           # Averaging Pi across covariate cells
           posterior_Pi_mean_plot_df$Pi_hat = do.call(cbind,lapply(posterior_Pi_mean, function(Pi_mean) Pi_mean$Pi_hat)) %*% W_weights
 
+          # Converting X and Y names to factors
+          posterior_Pi_mean_plot_df$X_name = as.factor(posterior_Pi_mean_plot_df$X_name)
+          posterior_Pi_mean_plot_df$Y_name = as.factor(posterior_Pi_mean_plot_df$Y_name)
 
           # Finding posterior mean Delta within covariate cells
           posterior_Delta_mean = lapply(
@@ -960,13 +983,17 @@ misclassifyr <- function(
           # Averaging Delta across covariate cells
           posterior_Delta_mean_plot_df$Delta_hat = do.call(cbind,lapply(posterior_Delta_mean, function(Delta_mean) Delta_mean$Delta_hat)) %*% W_weights
 
+          # Converting Y1 and Ys to factors
+          posterior_Delta_mean_plot_df$Y1_name = as.factor(posterior_Delta_mean_plot_df$Y1_name)
+          posterior_Delta_mean_plot_df$Ys_name = as.factor(posterior_Delta_mean_plot_df$Ys_name)
+
           # Plotting the joint distribution of X and Y*
           Pi_hat_posterior_plot = ggplot2::ggplot(posterior_Pi_mean_plot_df,
                                             ggplot2::aes(x = X_name,y = Y_name, fill = Pi_hat ) ) +
             ggplot2::geom_raster(show.legend = F) +
-            ggplot2::scale_fill_gradient(low="#EDF3FF", high="#002676") +
+            ggplot2::scale_fill_gradient(low="#FAFBFF", high="#002676") +
             ggplot2::geom_text(ggplot2::aes(label = round(Pi_hat,2),
-                                            color = Pi_hat > median(Pi_hat) )) +
+                                            color = Pi_hat > mean(Pi_hat) )) +
             ggplot2::scale_color_manual(guide = "none", values = c("black", "white")) +
             ggplot2::labs(x = X_col_name, y = Y_col_name) +
             ggplot2::theme_minimal() +
@@ -978,7 +1005,7 @@ misclassifyr <- function(
           Delta_hat_posterior_plot = ggplot2::ggplot(posterior_Delta_mean_plot_df,
                                                ggplot2::aes(x = Ys_name,y = Y1_name, fill = Delta_hat)) +
             ggplot2::geom_raster(show.legend = F) +
-            ggplot2::scale_fill_gradient(low="#EDF3FF", high="#002676", limits= c(0,1)) +
+            ggplot2::scale_fill_gradient(low="#FAFBFF", high="#002676", limits= c(0,1)) +
             ggplot2::geom_text(ggplot2::aes(label = round(Delta_hat,2),
                                             color = Delta_hat > 0.5 )) +
             ggplot2::scale_color_manual(guide = "none", values = c("black", "white")) +
@@ -995,13 +1022,17 @@ misclassifyr <- function(
 
       } else {
 
-        # Finding posterior mean Pi within covariate cells
+        # Finding posterior mean Pi for plotting
         posterior_Pi_mean_plot_df = misclassification_output$posterior_Pi |>
           dplyr::group_by(X_name, Y_name) |>
           dplyr::summarise(Pi_hat = mean(Pi_hat), .groups = "drop") |>
           as.data.frame()
 
-        # Finding posterior mean Delta within covariate cells
+        # Converting X and Y names to factors
+        posterior_Pi_mean_plot_df$X_name = as.factor(posterior_Pi_mean_plot_df$X_name)
+        posterior_Pi_mean_plot_df$Y_name = as.factor(posterior_Pi_mean_plot_df$Y_name)
+
+        # Finding posterior mean Delta and marginalizing across Y2
         posterior_Delta_mean_plot_df = lapply(
           misclassification_output$posterior_Delta,
           function(Delta_draws) Delta_draws |>
@@ -1012,13 +1043,17 @@ misclassifyr <- function(
                              .groups = "drop") |>
             as.data.frame()
 
+        # Converting Y1 and Ys to factors
+        posterior_Delta_mean_plot_df$Y1_name = as.factor(posterior_Delta_mean_plot_df$Y1_name)
+        posterior_Delta_mean_plot_df$Ys_name = as.factor(posterior_Delta_mean_plot_df$Ys_name)
+
         # Plotting the joint distribution of X and Y*
         Pi_hat_posterior_plot = ggplot2::ggplot(posterior_Pi_mean_plot_df,
                                                 ggplot2::aes(x = X_name,y = Y_name, fill = Pi_hat ) ) +
           ggplot2::geom_raster(show.legend = F) +
-          ggplot2::scale_fill_gradient(low="#EDF3FF", high="#002676") +
+          ggplot2::scale_fill_gradient(low="#FAFBFF", high="#002676") +
           ggplot2::geom_text(ggplot2::aes(label = round(Pi_hat,2),
-                                          color = Pi_hat > median(Pi_hat) )) +
+                                          color = Pi_hat > mean(Pi_hat) )) +
           ggplot2::scale_color_manual(guide = "none", values = c("black", "white")) +
           ggplot2::labs(x = X_col_name, y = Y_col_name) +
           ggplot2::theme_minimal() +
@@ -1030,7 +1065,7 @@ misclassifyr <- function(
         Delta_hat_posterior_plot = ggplot2::ggplot(posterior_Delta_mean_plot_df,
                                                    ggplot2::aes(x = Ys_name,y = Y1_name, fill = Delta_hat)) +
           ggplot2::geom_raster(show.legend = F) +
-          ggplot2::scale_fill_gradient(low="#EDF3FF", high="#002676", limits= c(0,1)) +
+          ggplot2::scale_fill_gradient(low="#FAFBFF", high="#002676", limits= c(0,1)) +
           ggplot2::geom_text(ggplot2::aes(label = round(Delta_hat,2),
                                           color = Delta_hat > 0.5 )) +
           ggplot2::scale_color_manual(guide = "none", values = c("black", "white")) +

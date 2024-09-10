@@ -3,7 +3,7 @@
 require(misclassifyr)
 
 # Load the data
-synthetic = synthetic_data(I = 1)
+synthetic = synthetic_data()
 
 # (Temporary, unbundling to be the argumefnts of misclassifyr)
 tab = synthetic$tab
