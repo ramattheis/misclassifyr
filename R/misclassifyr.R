@@ -871,16 +871,10 @@ misclassifyr <- function(
         Pi_hat_mle_plot_df$Y = rep(misclassification_output$Y_names, misclassification_output$J)
 
         # Averaging Delta across covariate cells
-        Delta_hat_mle_plot_df = do.call(
-          cbind,
-          lapply(misclassification_output$Delta_hat_mle,
-                 function(Delta) apply(
-                   matrix(Delta, nrow = misclassification_output$J[[1]]),
-                   2, sum))
-        ) %*% W_weights |>c() |> as.data.frame()
+        Delta_hat_mle_plot_df = apply( matrix(misclassification_output$Delta_hat_mle, nrow = misclassification_output$J),2, sum) |> c() |> as.data.frame()
         colnames(Delta_hat_mle_plot_df) = c("Delta_hat")
-        Delta_hat_mle_plot_df$Ys = c(sapply(misclassification_output$Y_names[[1]], function(xn) rep(xn, misclassification_output$J[[1]])))
-        Delta_hat_mle_plot_df$Y1 = rep(misclassification_output$Y_names[[1]], misclassification_output$J[[1]])
+        Delta_hat_mle_plot_df$Ys = c(sapply(misclassification_output$Y_names, function(xn) rep(xn, misclassification_output$J)))
+        Delta_hat_mle_plot_df$Y1 = rep(misclassification_output$Y_names, misclassification_output$J)
 
         # Plotting the joint distribution of X and Y*
         Pi_hat_mle_plot = ggplot2::ggplot(Pi_hat_mle_plot_df,

@@ -3,9 +3,9 @@
 require(misclassifyr)
 
 # Load the data
-synthetic = synthetic_data()
+synthetic = synthetic_data(I = 1)
 
-# (Temporary, unbundling to be the arguments of misclassifyr)
+# (Temporary, unbundling to be the argumefnts of misclassifyr)
 tab = synthetic$tab
 J = list(5,5)
 K = list(5,5)
