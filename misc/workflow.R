@@ -29,6 +29,8 @@ out = misclassifyr(
   estimate_beta = T,
   X_col_name = "father_income_1750",
   Y_col_name = "son_income_1780",
+  bayesian = T,
+  log_prior_Delta = log_prior_Delta_RL_ind,
   cores = 4
 )
 

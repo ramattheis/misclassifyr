@@ -83,24 +83,24 @@ misclassifyr <- function(
   if(!identical(cores%%1,0)){
     stop("`cores` should be an integer.")
   } else if(parallel::detectCores() < cores){
-    stop("Error: You requested more cores than appear available on your machine.")
+    stop("You requested more cores than appear available on your machine.")
   }
 
-  if(!identical(optim_maxit%%1,0)){ stop("Error: `optim_maxit` should be an integer.") }
-  if(identical(as.numeric(gibbs_proposal_sd),NA)){ stop("Error: `gibbs_proposal_sd` should be numeric.") }
+  if(!identical(optim_maxit%%1,0)){ stop("`optim_maxit` should be an integer.") }
+  if(identical(as.numeric(gibbs_proposal_sd),NA)){ stop("`gibbs_proposal_sd` should be numeric.") }
 
-  if(!identical(n_mcmc_draws%%1,0)){ stop("Error: `n_mcmc_draws` should be an integer.") }
-  if(!identical(n_burnin%%1,0)){ stop("Error: `n_burnin` should be an integer.") }
-  if(!identical(thinning_rate%%1,0)){ stop("Error: `thinning_rate` should be an integer.") }
-  if(identical(as.numeric(gibbs_proposal_sd),NA)){ stop("Error: `gibbs_proposal_sd` should be numeric.") }
+  if(!identical(n_mcmc_draws%%1,0)){ stop("`n_mcmc_draws` should be an integer.") }
+  if(!identical(n_burnin%%1,0)){ stop("`n_burnin` should be an integer.") }
+  if(!identical(thinning_rate%%1,0)){ stop("`thinning_rate` should be an integer.") }
+  if(identical(as.numeric(gibbs_proposal_sd),NA)){ stop("`gibbs_proposal_sd` should be numeric.") }
 
   # Throwing an error if n_burnin or n_mcmc_draws is too small
-  if(n_mcmc_draws < 10000){ stop("Error: `n_mcmc_draws` is too small. Choose a value of at least 10000.")}
-  if(n_burnin < 5000){ stop("Error: `n_burnin` is too small. Choose a value of at least 5000.")}
+  if(n_mcmc_draws < 10000){ stop("`n_mcmc_draws` is too small. Choose a value of at least 10000.")}
+  if(n_burnin < 5000){ stop("`n_burnin` is too small. Choose a value of at least 5000.")}
 
   # Throwing an error if the relative size of n_mcmc_draws/ n_burnin /
-  if(n_mcmc_draws - n_burnin < 1000){ stop("Error: `n_burnin` is too close to `n_mcmc_draws`. Choose a smaller `n_burnin` or a larger `n_mcmc_draws`.")}
-  if((n_mcmc_draws - n_burnin)/thinning_rate < 1000){ stop("Error: `thinning_rate` is too large. Choose a smaller `n_thinning_rate` or a larger gap between `n_burnin` and `n_mcmc_draws`.")}
+  if(n_mcmc_draws - n_burnin < 1000){ stop("`n_burnin` is too close to `n_mcmc_draws`. Choose a smaller `n_burnin` or a larger `n_mcmc_draws`.")}
+  if((n_mcmc_draws - n_burnin)/thinning_rate < 1000){ stop("`thinning_rate` is too large. Choose a smaller `n_thinning_rate` or a larger gap between `n_burnin` and `n_mcmc_draws`.")}
 
   #-----------------------------
   # Recording the types of each object
@@ -143,7 +143,7 @@ misclassifyr <- function(
     if(!all(input_types$type == "list")){
       # Returning a message that some objects will be copied.
       message(paste0("The following objects were not provided as a list and will be copied across covariate cells: ",
-                     paste0(subset(input_types, type != "list")$object, collapse = ", "), " \n"))
+                     paste0(subset(input_types, type != "list")$object, collapse = ", ")))
       # Determining the length of each provided list
       list_lengths = sapply(subset(input_types, type == "list")$object,
                             function(list_name) length(get(list_name)))
@@ -360,7 +360,7 @@ misclassifyr <- function(
       #------------------------------------------------------------
 
       # Quick update to the user
-      message("Estimating the misclassification model via maximum likelihood...\n")
+      message("Estimating the misclassification model via maximum likelihood...")
 
       # Optimizing with standard quasi-newton
       mle_out = optim(
@@ -401,7 +401,7 @@ misclassifyr <- function(
       inconsistency = 0
 
       # Quick update to the user
-      message("Assessing the stability of the MLE...\n")
+      message("Assessing the stability of the MLE...")
 
       for(draw in 1:extra_starting_points){
 
@@ -433,7 +433,7 @@ misclassifyr <- function(
       fisher_info = -1*mle_out$hessian[1:(split_eta-1),1:(split_eta-1)]
       if (abs(det(fisher_info)) < 1e-9) {
         fisher_info_err = "Fisher information matrix is not invertible."
-        warning("The Fisher information matrix is not invertible; using the Moore-Penrose inverse instead -- analytical variances may be inaccurate. Consider using Bayesian inference instead.")
+        warning("The Fisher information matrix is not invertible; using the Moore-Penrose inverse instead -- analytical variances may be inaccurate.  Consider reporting Bayesian credible sets or CCT partial-identification robust confidence intervals instead.")
       } else {
         fisher_info_err = "Fisher information matrix is invertible."
       }
@@ -534,8 +534,8 @@ misclassifyr <- function(
       #------------------------------------------------------------
 
       # Quick update to the user
-      message("Sampling from the posterior of Pi and Delta...\n")
-      message("This might take a while---feel free to grab a coffee / tea / walk / etc...\n")
+      message("Sampling from the posterior of Pi and Delta...")
+      message("This might take a while---feel free to grab a coffee / tea / walk / etc...")
 
       while(gibbs.env$counter < n_mcmc_draws){
 
@@ -767,8 +767,8 @@ misclassifyr <- function(
     }
 
     # Quick update to the user...
-    message("Estimating the misclassification model within covariate cells...\n")
-    message("This might take a while---feel free to grab a coffee / tea / walk / etc... \n")
+    message("Estimating the misclassification model within covariate cells...")
+    message("This might take a while---feel free to grab a coffee / tea / walk / etc... ")
 
     # Drawing from the posterior of Pi and Delta within covariate cells
     misclassification_out = pbapply::pblapply(
@@ -796,6 +796,17 @@ misclassifyr <- function(
 
     # Adding back output names
     names(misclassification_output) = output_names
+
+    # Were there any errors in the estimation process?
+    fisher_info_errs = unlist(misclassification_output$fisher_info_err)
+    if(any(fisher_info_errs ==  "Fisher information matrix is not invertible.")){
+      warning("The Fisher information matrix was not invertible in at least one control cell is not invertible. Analytical standard errors for the MLE may not be reliable. Consider reporting Bayesian credible sets or CCT partial-identification robust confidence intervals instead.")
+    }
+    inconsistencies_mle = unlist(misclassification_output$inconsistency_mle)
+    if(any(inconsistencies_mle > 0.1)){
+      warning("`eta_hat` is inconsistent across starting locations; point identification may fail. Consider reporting Bayesian credible sets or CCT partial identification-robust confidence intervals.")
+    }
+
 
   } else {
 
@@ -1097,7 +1108,7 @@ misclassifyr <- function(
   if(estimate_beta){
 
     # Sending an update
-    message("Estimating beta from Pi...\n")
+    message("Estimating beta from Pi...")
 
     # Computing beta from Pi for MLE
     if(mle){
