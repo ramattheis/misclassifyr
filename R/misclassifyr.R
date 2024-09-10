@@ -76,12 +76,12 @@ misclassifyr <- function(
   # other input errors caught in MisclassMLE()
   #------------------------------------------------------------
 
-  if(class(bayesian) != "logical"){stop("Error: `bayesian` should be TRUE or FALSE.")}
-  if(class(mle) != "logical"){stop("Error: `mle` should be TRUE or FALSE.")}
-  if(!bayesian&!mle){stop("Error: either `bayesian` or `mle` should be TRUE.")}
+  if(class(bayesian) != "logical"){stop("`bayesian` should be TRUE or FALSE.")}
+  if(class(mle) != "logical"){stop("`mle` should be TRUE or FALSE.")}
+  if(!bayesian&!mle){stop("Either `bayesian` or `mle` should be TRUE.")}
 
   if(!identical(cores%%1,0)){
-    stop("Error: `cores` should be an integer.")
+    stop("`cores` should be an integer.")
   } else if(parallel::detectCores() < cores){
     stop("Error: You requested more cores than appear available on your machine.")
   }
@@ -139,16 +139,16 @@ misclassifyr <- function(
 
   if(any(input_types$type == "list")){
     # Throwing an error if tab is not a list (nothing should be a list if tab is not a list)
-    if(subset(input_types, object == "tab")$type != "list"){stop("Error: No arguments should be lists if `tab` is not a list.")}
+    if(subset(input_types, object == "tab")$type != "list"){stop("No arguments should be lists if `tab` is not a list.")}
     if(!all(input_types$type == "list")){
       # Returning a message that some objects will be copied.
       message(paste0("The following objects were not provided as a list and will be copied across covariate cells: ",
-                     paste0(subset(input_types, type != "list")$object, collapse = ", ")))
+                     paste0(subset(input_types, type != "list")$object, collapse = ", "), " \n"))
       # Determining the length of each provided list
       list_lengths = sapply(subset(input_types, type == "list")$object,
                             function(list_name) length(get(list_name)))
       # Throwing an error if not all lists are the same length
-      if(length(unique(list_lengths)) > 1){stop("Error: Provided lists are not all the same length.")}
+      if(length(unique(list_lengths)) > 1){stop("Provided lists are not all the same length.")}
       list_length = unique(list_lengths)
       # Making a list of copies for all objects that are not already lists
       invisible(
@@ -232,33 +232,33 @@ misclassifyr <- function(
 
     # Throwing an error for argument type
     if(!is.data.frame(tab)){
-      stop("Error: `tab` should be a data frame.")}
+      stop("`tab` should be a data frame.")}
     if(!is.function(model_to_Pi)){
-      stop("Error: `model_to_Pi` should be a function.")}
+      stop("`model_to_Pi` should be a function.")}
     if(!is.function(model_to_Delta)){
-      stop("Error: `model_to_Delta` should be a function.")}
+      stop("`model_to_Delta` should be a function.")}
 
     # Throwing errors if `tab` isn't properly formatted
     if(!identical(setdiff(c("Y1","Y2","X","n"), colnames(tab)),character(0))){
-      stop("Error: `tab` should have four columns: `Y1`, `Y2`, `X`, and `n`.")
+      stop("`tab` should have four columns: `Y1`, `Y2`, `X`, and `n`.")
     }
     if( !(class(tab$n) %in% c("double","numeric","integer") ) | min(tab$n) < 0){
-      stop("Error: `n` should take non-negative integer values representing counts (or weighted counts) of unique values of `X`, `Y1`, and `Y2`")
+      stop("`n` should take non-negative integer values representing counts (or weighted counts) of unique values of `X`, `Y1`, and `Y2`")
     }
     # Throwing an error if no starting location is found for user-defined model_to_Pi or model_to_Delta
     if(is.na(phi_0) & identical(attr(model_to_Pi,"name"),NULL)){
-      stop("Error: `phi_0` must be defined if `model_to_Pi` is user-defined.")
+      stop("`phi_0` must be defined if `model_to_Pi` is user-defined.")
     }
     if(is.na(psi_0) & identical(attr(model_to_Delta,"name"),NULL)){
-      stop("Error: `psi_0` must be defined if `model_to_Delta` is user-defined.")
+      stop("`psi_0` must be defined if `model_to_Delta` is user-defined.")
     }
     # Throwing an error if tab is not balanced
     if( any(duplicated(tab[,c("X","Y1","Y2")])) | nrow(tab) != J^2*K){
-      stop("Error: `tab` appears not to be balanced across X, Y1, and Y2.")
+      stop("`tab` appears not to be balanced across X, Y1, and Y2.")
     }
     # Throwing an error if model_to_Pi doesn't accept additional arguments
     if(!("..." %in% names(formals(model_to_Pi)))){
-      stop("Error: `model_to_Pi` must accept additional arguments `...`.")
+      stop("`model_to_Pi` must accept additional arguments `...`.")
     }
 
 
@@ -376,8 +376,8 @@ misclassifyr <- function(
       )
 
       # Throwing an error if optim did not converge successfully
-      if(mle_out$convergence == 1){stop("Error: Maximum iterations reached before numerical convergence, consider increasing optim max iterations or tolerance.")}
-      if(mle_out$convergence > 1){stop(paste("Error: Numerical optimization failed with message:",
+      if(mle_out$convergence == 1){stop("Maximum iterations reached before numerical convergence, consider increasing optim max iterations or tolerance.")}
+      if(mle_out$convergence > 1){stop(paste("Numerical optimization failed with message:",
                                              mle_out$message, "... consider alternative `optim` settings."))}
 
       #------------------------------------------------------------
@@ -1095,6 +1095,9 @@ misclassifyr <- function(
   #------------------------------------------------------------
 
   if(estimate_beta){
+
+    # Sending an update
+    message("Estimating beta from Pi...\n")
 
     # Computing beta from Pi for MLE
     if(mle){
