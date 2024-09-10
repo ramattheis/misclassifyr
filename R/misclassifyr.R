@@ -422,7 +422,7 @@ misclassifyr <- function(
       }
 
       if(inconsistency > 0.1){
-        warning("Optimal eta is inconsitent across starting locations.")
+        warning("Optimal theta is inconsistent across starting locations.")
       }
 
       #------------------------------------------------------------
@@ -804,7 +804,7 @@ misclassifyr <- function(
     }
     inconsistencies_mle = unlist(misclassification_output$inconsistency_mle)
     if(any(inconsistencies_mle > 0.1)){
-      warning("`eta_hat` is inconsistent across starting locations; point identification may fail. Consider reporting Bayesian credible sets or CCT partial identification-robust confidence intervals.")
+      warning("Optimal theta is inconsistent across starting locations; point identification may fail. Consider reporting Bayesian credible sets or CCT partial identification-robust confidence intervals.")
     }
 
 

@@ -17,7 +17,7 @@ logit_link_volume = function(x){
 
   # Computing the log of the determinant of the Jacobian of the logit transform
   # the log of the determinant is the sum of the log of the eigenvalues
-  log_det_logit = sum(log(eigen(J_)$values))
+  log_det_logit = sum(softlog(eigen(J_)$values))
 
   # Adding the flat prior constant (just for kicks)
   # the density in an N-simplex is 1/N!
