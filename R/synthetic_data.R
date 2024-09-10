@@ -30,6 +30,14 @@ synthetic_data = function(J=5,
 
     if(dgp_pi == "Exponential"){
       pi = do.call(rbind,lapply(1:J, function(j) exp(-1/2*(1:K - j)^2)))
+      for(r in 1:J){
+        for(c in 1:K){
+          # Making pi asymmetric across the diagonal
+          if(r>c){
+            pi[r,c] = 0.5*pi[r,c]
+          }
+        }
+      }
       pi = pi/sum(pi)
     }
 
@@ -39,34 +47,28 @@ synthetic_data = function(J=5,
 
     if(dgp_delta == "Nonparametric, independent, strong diagonal"){
 
-      delta1 = apply(diag(1/2,J) + matrix(exp(rnorm(J^2, mean = -5, sd = 1) ), J,J),
-                     2, function(v) v/sum(v))
-      delta2 = apply(diag(1/2,J) + matrix(exp(rnorm(J^2, mean = -5, sd = 1) ), J,J),
-                     2, function(v) v/sum(v))
+      # Generating diagonal-dominant matrices
+      delta1 = diag(J) + matrix(1/J,J,J)
+      delta2 = diag(J) + matrix(1/J,J,J)
 
-      delta = lapply(1:ncol(delta2), function(j) diag(delta2[j,]) %*% delta1)
-      delta = do.call(cbind, delta)
+      # Making delta1 top-heavy and delta2 bottom-heavy
+      for(r in 1:J){
+        for(c in 1:J){
+          # Making Delta asymmetric across the diagonal
+          if(r>c){
+            delta1[r,c] = delta1[r,c] - 1/(2*J)
+            delta2[r,c] = delta2[r,c] + 1/(2*J)
+          }
+          if(r<c){
+            delta1[r,c] = delta1[r,c] + 1/(2*J)
+            delta2[r,c] = delta2[r,c] - 1/(2*J)
+          }
+        }
+      }
 
-    }
-
-    if(dgp_delta == "Nonparametric, independent, medium diagonal"){
-
-      delta1 = apply(diag(1/2,J) + matrix(exp(rnorm(J^2, mean = -4, sd = 1) ), J,J),
-                     2, function(v) v/sum(v))
-      delta2 = apply(diag(1/2,J) + matrix(exp(rnorm(J^2, mean = -4, sd = 1) ), J,J),
-                     2, function(v) v/sum(v))
-
-      delta = lapply(1:ncol(delta2), function(j) diag(delta2[j,]) %*% delta1)
-      delta = do.call(cbind, delta)
-
-    }
-
-    if(dgp_delta == "Nonparametric, independent, weak diagonal"){
-
-      delta1 = apply(diag(1/2,J) + matrix(exp(rnorm(J^2, mean = -3, sd = 1) ), J,J),
-                     2, function(v) v/sum(v))
-      delta2 = apply(diag(1/2,J) + matrix(exp(rnorm(J^2, mean = -3, sd = 1) ), J,J),
-                     2, function(v) v/sum(v))
+      # normalizing
+      delta1 = apply(delta1, 2, function(v) v/sum(v))
+      delta2 = apply(delta2, 2, function(v) v/sum(v))
 
       delta = lapply(1:ncol(delta2), function(j) diag(delta2[j,]) %*% delta1)
       delta = do.call(cbind, delta)
