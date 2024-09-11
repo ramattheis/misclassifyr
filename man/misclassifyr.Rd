@@ -17,7 +17,6 @@ misclassifyr(
   Y_names = NA,
   W_names = NA,
   estimate_beta = F,
-  estimate_betas = F,
   X_vals = NA,
   Y_vals = NA,
   X_col_name = "X",

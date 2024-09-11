@@ -70,7 +70,7 @@ synthetic_data = function(J=5,
       delta1 = apply(delta1, 2, function(v) v/sum(v))
       delta2 = apply(delta2, 2, function(v) v/sum(v))
 
-      delta = lapply(1:ncol(delta2), function(j) diag(delta2[j,]) %*% delta1)
+      delta = lapply(1:ncol(delta2), function(j) diag(delta2[j,]) %*% t(delta1))
       delta = do.call(cbind, delta)
 
     }
