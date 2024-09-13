@@ -10,14 +10,15 @@
 #' @param tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should be numeric with names `Y1`, `Y2`, `X`, and `n` where `Y1` and `Y2` take each value between `1` and `J`, `X` takes each value between `1` and `K`, and
 #' @param J An integer or list corresponding to the number of unique values of `Y1` and `Y2`.
 #' @param K An integer or list corresponding to the number of unique values of `X`.
+#' @param X_names A character vector or list corresponding to the values of the regressor X.
+#' @param Y1_names A character vector or list corresponding to the values of the outcome Y1.
+#' @param Y2_names A character vector or list corresponding to the values of the instrument Y2.
 #' @param model_to_Pi A function or list of functions mapping the parameters of a model for the joint distribution to the joint distribution `\eqn{\Pi}`.
 #' @param model_to_Delta A function or list of functions mapping the parameters of a model to the conditional distribution Y1, Y2 | Y*, `\eqn{\Delta}`.
 #' @param makeplots A logical value for whether to make trace plots and plots of \eqn{\Pi} and \eqn{Delta}. Defaults to TRUE.
 #' @param phi_0 A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Pi.
 #' @param psi_0 A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Delta.
 #' @param split_eta An integer or list indicating where to split the vector `eta` in `phi` and `psi`, the arguments to `model_to_Pi` and `model_to_Delta` respectively.
-#' @param X_names A character vector or list corresponding to the values of the regressor X.
-#' @param Y_names A character vector or list corresponding to the values of the outcome Y.
 #' @param X_col_name A character vector corresponding to the variable of the regressor X, used only for plots.
 #' @param Y_col_name A character vector corresponding to the variable of the outcome Y, used only for plots.
 #' @param W_names A character vector corresponding to the values of the control W in each cell.
@@ -44,13 +45,14 @@ misclassifyr <- function(
     tab,
     J,
     K,
+    X_names,
+    Y1_names,
+    Y2_names,
     model_to_Pi = model_to_Pi_NP,
     model_to_Delta = model_to_Delta_NP_ind,
     makeplots = T,
     phi_0 = NA,
     psi_0 = NA,
-    X_names = NA,
-    Y_names = NA,
     W_names = NA,
     estimate_beta = F,
     X_vals = NA,
@@ -113,7 +115,8 @@ misclassifyr <- function(
                   class(phi_0),
                   class(psi_0),
                   class(X_names),
-                  class(Y_names),
+                  class(Y1_names),
+                  class(Y2_names),
                   class(X_vals),
                   class(Y_vals)) |>
     as.data.frame()
@@ -129,7 +132,8 @@ misclassifyr <- function(
     "phi_0",
     "psi_0",
     "X_names",
-    "Y_names",
+    "Y1_names",
+    "Y2_names",
     "X_vals",
     "Y_vals")
 
@@ -179,7 +183,8 @@ misclassifyr <- function(
       phi_0 = phi_0[[j]],
       psi_0 = psi_0[[j]],
       X_names = X_names[[j]],
-      Y_names = Y_names[[j]],
+      Y1_names = Y1_names[[j]],
+      Y2_names = Y2_names[[j]],
       W_names = W_names[j],
       X_vals = X_vals[[j]],
       Y_vals = Y_vals[[j]]
@@ -196,7 +201,8 @@ misclassifyr <- function(
       phi_0 = phi_0,
       psi_0 = psi_0,
       X_names = X_names,
-      Y_names = Y_names,
+      Y1_names = Y1_names,
+      Y2_names = Y2_names,
       W_names = W_names,
       X_vals = X_vals,
       Y_vals = Y_vals
@@ -221,7 +227,8 @@ misclassifyr <- function(
     phi_0 = misclassification_input$phi_0
     psi_0 = misclassification_input$psi_0
     X_names = misclassification_input$X_names
-    Y_names = misclassification_input$Y_names
+    Y1_names = misclassification_input$Y1_names
+    Y2_names = misclassification_input$Y2_names
     W_names = misclassification_input$W_names
     X_vals = misclassification_input$X_vals
     Y_vals = misclassification_input$Y_vals
@@ -261,6 +268,10 @@ misclassifyr <- function(
       stop("`model_to_Pi` must accept additional arguments `...`.")
     }
 
+    # Ensuring that X, Y1, and Y2 are factors with the correct order
+    tab$X = factor(tab$X, levels = X_names)
+    tab$Y1 = factor(tab$Y1, levels = Y1_names)
+    tab$Y2 = factor(tab$Y2, levels = Y2_names)
 
     #------------------------------------------------------------
     # Setting the starting location for optimization and/or MCMC
@@ -275,8 +286,8 @@ misclassifyr <- function(
           as.data.frame()
         tab_xy = tab_xy[order(tab_xy$Y1, tab_xy$X),]
         tab_xy$p = tab_xy$n/sum(tab_xy$n)
-        phi_0 = softlog(tab_xy$p[1:(J*K-1)] /tab_xy$p[J*K])
-
+        phi_0 = softlog(tab_xy$p[1:(J*K-1)] / max(tab_xy$p[J*K], 1e-6))
+        rm(tab_xy)
         # Default starting location for phi_0 is flat
         # phi_0 = softlog(rep(1/(J*K), J*K-1 )/(1/(J*K)) )
       }
@@ -570,8 +581,8 @@ misclassifyr <- function(
         Pi_hat = model_to_Pi(eta_hat[1:(split_eta - 1)],J)
 
         # Binding with corresponding names of X and Y*
-        X_name = sapply(X_names, function(v) rep(v,J)) |> c()
-        Y_name = rep(Y_names, K) |> c()
+        X_name = sapply(X_names, function(v) rep(v,J)) |> as.character() |> c()
+        Y_name = rep(Y1_names, K) |> as.character()
 
         # Binding as a data frame
         Pi_hat_df = as.data.frame(cbind(Pi_hat, X_name, Y_name))
@@ -588,6 +599,9 @@ misclassifyr <- function(
         # Recording posterior draw
         Pi_hat_df$draw = draw
 
+        # Changing Pi_hat to numeric
+        Pi_hat_df$Pi_hat = as.numeric(Pi_hat_df$Pi_hat)
+
         return(Pi_hat_df)
 
       }
@@ -598,9 +612,9 @@ misclassifyr <- function(
         Delta_hat = model_to_Delta(eta_hat[split_eta:length(eta_hat)])
 
         # Binding to corresponding names of Y*, Y1, Y2
-        Y2_name = rep(Y_names, J^2)
-        Y1_name = rep(c(sapply(Y_names, function(y) rep(y,J))),J)
-        Ys_name = c(sapply(Y_names, function(y) rep(y, J^2)))
+        Y2_name = rep(Y2_names, J^2) |> as.character()
+        Y1_name = rep(c(sapply(Y1_names, function(y) rep(y,J))),J) |> as.character()
+        Ys_name = c(sapply(Y1_names, function(y) rep(y, J^2))) |> as.character()
 
         # Binding as a data frame
         Delta_hat_df = as.data.frame(cbind(Delta_hat, Ys_name, Y1_name, Y2_name))
@@ -618,6 +632,9 @@ misclassifyr <- function(
 
         # Recording posterior draw
         Delta_hat_df$draw = draw
+
+        # Changing Delta_hat to numeric
+        Delta_hat_df$Delta_hat = as.numeric(Delta_hat_df$Delta_hat)
 
         return(Delta_hat_df)
 
@@ -668,9 +685,7 @@ misclassifyr <- function(
         names(trace_plots_eta) = paste0("eta_",1:ncol(posterior_eta))
 
         # Trace plots for Pi
-        X_names_plot = unique(posterior_Pi$X_name)
-        Y_names_plot = unique(posterior_Pi$Y_name)
-        XY_names = expand.grid(X_names_plot,Y_names_plot)
+        XY_names = expand.grid(X_names,Y1_names)
         colnames(XY_names) = c("X","Y")
         XY_names$label = paste0( "Pr(X = ",XY_names$X, ", Y = ", XY_names$Y, ")")
         trace_plots_Pi = lapply(1:nrow(XY_names), function(j)
@@ -679,7 +694,7 @@ misclassifyr <- function(
         names(trace_plots_Pi) = XY_names$label
 
         # Trace plots for Delta
-        YYY_names = expand.grid(Y_names_plot, Y_names_plot, Y_names_plot)
+        YYY_names = expand.grid(Y1_names, Y2_names, Y1_names)
         colnames(YYY_names) = c("Y1","Y2","Y*")
         YYY_names$label = paste0( "Pr(Y1 = ",YYY_names$Y1, ", Y2 = ", YYY_names$Y2, " | Y* = ", YYY_names$`Y*`, ")")
         trace_plots_Delta = lapply(1:nrow(YYY_names), function(j)
@@ -734,7 +749,8 @@ misclassifyr <- function(
       J = J,
       K = K,
       X_names = X_names,
-      Y_names = Y_names,
+      Y1_names = Y1_names,
+      Y2_names = Y2_names,
       X_vals = X_vals,
       Y_vals = Y_vals,
       W_weight = sum(tab$n),
@@ -838,22 +854,21 @@ misclassifyr <- function(
           # Averaging Pi across covariate cells
           Pi_hat_mle_plot_df = do.call(cbind, misclassification_output$Pi_hat_mle) %*% W_weights |> c() |> as.data.frame()
           colnames(Pi_hat_mle_plot_df) = c("Pi_hat")
-          Pi_hat_mle_plot_df$X = as.factor(c(sapply(misclassification_output$X_names[[1]], function(xn) rep(xn, misclassification_output$J[[1]]))))
-          Pi_hat_mle_plot_df$Y = as.factor(rep(misclassification_output$Y_names[[1]], misclassification_output$J[[1]]))
+          Pi_hat_mle_plot_df$X = factor(c(sapply(X_names[[1]], function(xn) rep(xn, J[[1]]))), levels = X_names[[1]])
+          Pi_hat_mle_plot_df$Y = factor(rep(Y1_names[[1]], J[[1]]), levels = Y1_names[[1]])
 
           # Building a matrix to marginalize Delta over Y2
-          candycane = do.call(rbind, lapply(1:misclassification_output$J[[1]],
-                                            function(x) diag(misclassification_output$J[[1]])))
+          candycane = do.call(rbind, lapply(1:J[[1]], function(x) diag(J[[1]])))
 
           # Averaging Delta across covariate cells
           Delta_hat_mle_plot_df = do.call(
             cbind,
             lapply(misclassification_output$Delta_hat_mle,
-                   function(Delta) c(matrix(Delta, nrow = misclassification_output$J[[1]]) %*% candycane))
+                   function(Delta) c(matrix(Delta, nrow = J[[1]]) %*% candycane))
             ) %*% W_weights |>c() |> as.data.frame()
           colnames(Delta_hat_mle_plot_df) = c("Delta_hat")
-          Delta_hat_mle_plot_df$Y1 = c(sapply(misclassification_output$Y_names[[1]], function(xn) rep(xn, misclassification_output$J[[1]]))) |> as.factor()
-          Delta_hat_mle_plot_df$Ys = rep(misclassification_output$Y_names[[1]], misclassification_output$J[[1]]) |> as.factor()
+          Delta_hat_mle_plot_df$Y1 = factor(c(sapply(Y1_names[[1]], function(yn) rep(yn, J[[1]]))), levels = Y1_names[[1]])
+          Delta_hat_mle_plot_df$Ys = factor(rep(Y1_names[[1]], J[[1]]), levels = Y1_names[[1]])
 
           # Plotting the joint distribution of X and Y*
           Pi_hat_mle_plot = ggplot2::ggplot(Pi_hat_mle_plot_df,
@@ -893,18 +908,17 @@ misclassifyr <- function(
         # Preparing Pi estimates for a plot
         Pi_hat_mle_plot_df = c(misclassification_output$Pi_hat_mle) |> as.data.frame()
         colnames(Pi_hat_mle_plot_df) = c("Pi_hat")
-        Pi_hat_mle_plot_df$X = c(sapply(misclassification_output$X_names, function(xn) rep(xn, misclassification_output$J)))  |> as.factor()
-        Pi_hat_mle_plot_df$Y = rep(misclassification_output$Y_names, misclassification_output$J) |> as.factor()
+        Pi_hat_mle_plot_df$X = factor(c(sapply(X_names, function(xn) rep(xn,J))), levels = X_names)
+        Pi_hat_mle_plot_df$Y = factor(rep(Y1_names, J), levels = Y1_names)
 
         # Building a matrix to marginalize Delta over Y2
-        candycane = do.call(rbind, lapply(1:misclassification_output$J,
-                                          function(x) diag(misclassification_output$J)))
+        candycane = do.call(rbind, lapply(1:J, function(x) diag(J)))
 
         # Marginalizing Delta over Y2 and preparing for a plot
-        Delta_hat_mle_plot_df = c(matrix(misclassification_output$Delta_hat_mle, nrow = misclassification_output$J) %*% candycane) |> as.data.frame()
+        Delta_hat_mle_plot_df = c(matrix(misclassification_output$Delta_hat_mle, nrow = J) %*% candycane) |> as.data.frame()
         colnames(Delta_hat_mle_plot_df) = c("Delta_hat")
-        Delta_hat_mle_plot_df$Y1 = c(sapply(misclassification_output$Y_names, function(xn) rep(xn, misclassification_output$J))) |> as.factor()
-        Delta_hat_mle_plot_df$Ys = rep(misclassification_output$Y_names, misclassification_output$J) |> as.factor()
+        Delta_hat_mle_plot_df$Y1 = factor(c(sapply(Y1_names, function(yn) rep(yn, J))), levels = Y1_names)
+        Delta_hat_mle_plot_df$Ys = factor(rep(Y1_names, J), levels = Y1_names)
 
         # Plotting the joint distribution of X and Y*
         Pi_hat_mle_plot = ggplot2::ggplot(Pi_hat_mle_plot_df,
@@ -971,8 +985,8 @@ misclassifyr <- function(
           posterior_Pi_mean_plot_df$Pi_hat = do.call(cbind,lapply(posterior_Pi_mean, function(Pi_mean) Pi_mean$Pi_hat)) %*% W_weights
 
           # Converting X and Y names to factors
-          posterior_Pi_mean_plot_df$X_name = as.factor(posterior_Pi_mean_plot_df$X_name)
-          posterior_Pi_mean_plot_df$Y_name = as.factor(posterior_Pi_mean_plot_df$Y_name)
+          posterior_Pi_mean_plot_df$X_name = factor(posterior_Pi_mean_plot_df$X_name, levels = X_names[[1]])
+          posterior_Pi_mean_plot_df$Y_name = factor(posterior_Pi_mean_plot_df$Y_name, levels = Y1_names[[1]])
 
           # Finding posterior mean Delta within covariate cells
           posterior_Delta_mean = lapply(
@@ -995,8 +1009,8 @@ misclassifyr <- function(
           posterior_Delta_mean_plot_df$Delta_hat = do.call(cbind,lapply(posterior_Delta_mean, function(Delta_mean) Delta_mean$Delta_hat)) %*% W_weights
 
           # Converting Y1 and Ys to factors
-          posterior_Delta_mean_plot_df$Y1_name = as.factor(posterior_Delta_mean_plot_df$Y1_name)
-          posterior_Delta_mean_plot_df$Ys_name = as.factor(posterior_Delta_mean_plot_df$Ys_name)
+          posterior_Delta_mean_plot_df$Y1_name = factor(posterior_Delta_mean_plot_df$Y1_name, levels = Y1_names[[1]])
+          posterior_Delta_mean_plot_df$Ys_name = factor(posterior_Delta_mean_plot_df$Ys_name, levels = Y1_names[[1]])
 
           # Plotting the joint distribution of X and Y*
           Pi_hat_posterior_plot = ggplot2::ggplot(posterior_Pi_mean_plot_df,
@@ -1040,8 +1054,8 @@ misclassifyr <- function(
           as.data.frame()
 
         # Converting X and Y names to factors
-        posterior_Pi_mean_plot_df$X_name = as.factor(posterior_Pi_mean_plot_df$X_name)
-        posterior_Pi_mean_plot_df$Y_name = as.factor(posterior_Pi_mean_plot_df$Y_name)
+        posterior_Pi_mean_plot_df$X_name = factor(posterior_Pi_mean_plot_df$X_name, levels = X_names)
+        posterior_Pi_mean_plot_df$Y_name = factor(posterior_Pi_mean_plot_df$Y_name, levels = Y1_names)
 
         # Finding posterior mean Delta and marginalizing across Y2
         posterior_Delta_mean_plot_df = lapply(
@@ -1055,8 +1069,8 @@ misclassifyr <- function(
             as.data.frame()
 
         # Converting Y1 and Ys to factors
-        posterior_Delta_mean_plot_df$Y1_name = as.factor(posterior_Delta_mean_plot_df$Y1_name)
-        posterior_Delta_mean_plot_df$Ys_name = as.factor(posterior_Delta_mean_plot_df$Ys_name)
+        posterior_Delta_mean_plot_df$Y1_name = factor(posterior_Delta_mean_plot_df$Y1_name, levels = Y1_names)
+        posterior_Delta_mean_plot_df$Ys_name = factor(posterior_Delta_mean_plot_df$Ys_name, levels = Y1_names)
 
         # Plotting the joint distribution of X and Y*
         Pi_hat_posterior_plot = ggplot2::ggplot(posterior_Pi_mean_plot_df,
