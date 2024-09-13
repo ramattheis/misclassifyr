@@ -9,8 +9,14 @@ prep_misclassification_data(
   outcome_1,
   outcome_2,
   regressor,
+  outcome_1_bin = NA,
+  outcome_2_bin = NA,
+  regressor_bin = NA,
   controls = NA,
   weights = NA,
+  X_names = NA,
+  Y1_names = NA,
+  Y2_names = NA,
   record_vals = F
 )
 }
@@ -21,11 +27,23 @@ prep_misclassification_data(
 
 \item{outcome_2}{A character string denoting the variable in the dataframe to be used as the second measure of an outcome, Y_2.}
 
-\item{regressor}{A character string denoting the variable in the dataframe to be used as a regressor, X.}
+\item{regressor}{A character string denoting the variable in the dataframe to be used as the regressor, X.}
+
+\item{outcome_1_bin}{A character string denoting the variable in the dataframe to be used to group / bin and average the first measure of an outcome, Y_1.}
+
+\item{outcome_2_bin}{A character string denoting the variable in the dataframe to be used to group / bin and average the second measure of an outcome, Y_2.}
+
+\item{regressor_bin}{A character string denoting the variable in the dataframe to be used to group / bin and average the regressor, X.}
 
 \item{controls}{A character string or vector of character strings denoting the variable/variables to be used as non-parametric controls, W.}
 
 \item{weights}{A character string denoting a variable containing individual level weights}
+
+\item{X_names}{A vector of character strings denoting the values of the regressor in the desired order. If NA, as is default, names will be inferred from the data.}
+
+\item{Y1_names}{A vector of character strings denoting the values of the outcome in the desired order. If NA, as is default, names will be inferred from the data.}
+
+\item{Y2_names}{A vector of character strings denoting the values of the instrument in the desired order. If NA, as is default, names will be inferred from the data.}
 
 \item{record_vals}{A logical value indicating whether to record the unique values of the outcomes and the regressor. If record_vals = F, you likely want to order the data by the regressor and outcomes before applying prep_misclassification_data.}
 }

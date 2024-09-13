@@ -8,13 +8,14 @@ misclassifyr(
   tab,
   J,
   K,
+  X_names,
+  Y1_names,
+  Y2_names,
   model_to_Pi = model_to_Pi_NP,
   model_to_Delta = model_to_Delta_NP_ind,
   makeplots = T,
   phi_0 = NA,
   psi_0 = NA,
-  X_names = NA,
-  Y_names = NA,
   W_names = NA,
   estimate_beta = F,
   X_vals = NA,
@@ -43,6 +44,12 @@ misclassifyr(
 
 \item{K}{An integer or list corresponding to the number of unique values of \code{X}.}
 
+\item{X_names}{A character vector or list corresponding to the values of the regressor X.}
+
+\item{Y1_names}{A character vector or list corresponding to the values of the outcome Y1.}
+
+\item{Y2_names}{A character vector or list corresponding to the values of the instrument Y2.}
+
 \item{model_to_Pi}{A function or list of functions mapping the parameters of a model for the joint distribution to the joint distribution \verb{\eqn{\Pi}}.}
 
 \item{model_to_Delta}{A function or list of functions mapping the parameters of a model to the conditional distribution Y1, Y2 | Y*, \verb{\eqn{\Delta}}.}
@@ -52,10 +59,6 @@ misclassifyr(
 \item{phi_0}{A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Pi.}
 
 \item{psi_0}{A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Delta.}
-
-\item{X_names}{A character vector or list corresponding to the values of the regressor X.}
-
-\item{Y_names}{A character vector or list corresponding to the values of the outcome Y.}
 
 \item{W_names}{A character vector corresponding to the values of the control W in each cell.}
 
