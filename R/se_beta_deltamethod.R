@@ -59,6 +59,9 @@ se_beta_deltamethod = function(Pi, cov_Pi, X_vals, Y_vals, W_weights){
     se_beta = sqrt(var_beta)
   }
 
+  # Making sure se_beta is numeric (as opposed to a matrix)
+  se_beta = as.numeric(se_beta)
+
   # Returning the standard error of beta
   return(se_beta)
 
