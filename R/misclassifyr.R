@@ -785,6 +785,7 @@ misclassifyr <- function(
     # Quick update to the user...
     message("Estimating the misclassification model within covariate cells...")
     message("This might take a while---feel free to grab a coffee / tea / walk / etc... ")
+    message("The pogress bar will update after the first batch of jobs is complete.")
 
     # Drawing from the posterior of Pi and Delta within covariate cells
     misclassification_out = pbapply::pblapply(
@@ -833,7 +834,7 @@ misclassifyr <- function(
 
 
 
-  #------------------------------------------------------------
+   #------------------------------------------------------------
   # Generating Pi and Delta figures
   #------------------------------------------------------------
 
@@ -1160,9 +1161,8 @@ misclassifyr <- function(
 
       } else {
         # If there are no controls, returning NA
-        betas_mle = NA
+        betas_hat_mle = NA
         se_betas_mle = NA
-
       }
 
     } else {
