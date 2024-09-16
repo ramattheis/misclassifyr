@@ -17,6 +17,7 @@
 #' @param Y1_names A vector of character strings denoting the values of the outcome in the desired order. If NA, as is default, names will be inferred from the data.
 #' @param Y2_names A vector of character strings denoting the values of the instrument in the desired order. If NA, as is default, names will be inferred from the data.
 #' @param record_vals A logical value indicating whether to record the unique values of the outcomes and the regressor. If record_vals = F, you likely want to order the data by the regressor and outcomes before applying prep_misclassification_data.
+#' @param round_vals An integer indicating the precision with which to round the names associated with values of the regressor, outcome, and instrument. Default is 2.
 #' @return A list of objects including tabulated data to be used in misclassifyr()
 #' @export
 prep_misclassification_data <- function(
@@ -32,7 +33,8 @@ prep_misclassification_data <- function(
     X_names = NA,
     Y1_names = NA,
     Y2_names = NA,
-    record_vals = F) {
+    record_vals = F,
+    round_vals = 2) {
 
   #------------------------------------------------------------
   # Catching input errors
@@ -188,9 +190,9 @@ prep_misclassification_data <- function(
 
     # Recording the names of the outcome and the regressor
     if(identical(X_names,NA)){
-      X_names = unique(cell$X) |> as.character()
-      Y1_names = unique(cell$Y1) |> as.character()
-      Y2_names = unique(cell$Y2) |> as.character()
+      X_names = unique(cell$X) |> round(digits = round_vals) |> as.character()
+      Y1_names = unique(cell$Y1) |> round(digits = round_vals) |> as.character()
+      Y2_names = unique(cell$Y2) |> round(digits = round_vals) |> as.character()
     }
 
     # Recording the values of the outcome and the regressor
