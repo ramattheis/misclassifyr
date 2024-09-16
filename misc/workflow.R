@@ -31,6 +31,7 @@ misclassifyr_inputs = prep_misclassification_data(
   outcome_1_bin = "son_occupation_1780",
   outcome_2_bin = "son_occupation_1770",
   regressor_bin = "father_occupation_1750",
+  controls = "birthplace",
   weights = "linked_weight",
   record_vals = T
 )

@@ -188,9 +188,9 @@ prep_misclassification_data <- function(
 
     # Recording the names of the outcome and the regressor
     if(identical(X_names,NA)){
-      X_names = unique(cell$X)
-      Y1_names = unique(cell$Y1)
-      Y2_names = unique(cell$Y2)
+      X_names = unique(cell$X) |> as.character()
+      Y1_names = unique(cell$Y1) |> as.character()
+      Y2_names = unique(cell$Y2) |> as.character()
     }
 
     # Recording the values of the outcome and the regressor
