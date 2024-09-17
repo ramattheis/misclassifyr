@@ -205,7 +205,9 @@ prep_misclassification_data <- function(
     }
 
     # Ensuring that the tabulation is balanced across X, Y1, Y2
-    empty_cell = expand.grid(X_names, Y1_names, Y2_names)
+    empty_cell = expand.grid(unique(cell$X),
+                             unique(cell$Y1),
+                             unique(cell$Y2))
     colnames(empty_cell) = c("X","Y1","Y2")
     empty_cell$weight = 0
     empty_cell$W = NA
