@@ -17,7 +17,8 @@ prep_misclassification_data(
   X_names = NA,
   Y1_names = NA,
   Y2_names = NA,
-  record_vals = F
+  record_vals = F,
+  round_vals = 2
 )
 }
 \arguments{
@@ -46,6 +47,8 @@ prep_misclassification_data(
 \item{Y2_names}{A vector of character strings denoting the values of the instrument in the desired order. If NA, as is default, names will be inferred from the data.}
 
 \item{record_vals}{A logical value indicating whether to record the unique values of the outcomes and the regressor. If record_vals = F, you likely want to order the data by the regressor and outcomes before applying prep_misclassification_data.}
+
+\item{round_vals}{An integer indicating the precision with which to round the names associated with values of the regressor, outcome, and instrument. Default is 2.}
 }
 \value{
 A list of objects including tabulated data to be used in misclassifyr()

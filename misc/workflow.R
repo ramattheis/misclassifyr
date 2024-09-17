@@ -92,3 +92,5 @@ n_mcmc_draws = 1e3
 n_burnin = 5e2
 thinning_rate = 1
 cores = 6
+
+
