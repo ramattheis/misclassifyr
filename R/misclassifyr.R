@@ -273,10 +273,15 @@ misclassifyr <- function(
       stop("`model_to_Pi` must accept additional arguments `...`.")
     }
 
-    # Ensuring that X, Y1, and Y2 are factors with the correct order
-    tab$X = factor(tab$X, levels = X_names)
-    tab$Y1 = factor(tab$Y1, levels = Y1_names)
-    tab$Y2 = factor(tab$Y2, levels = Y2_names)
+    # If the values of X, Y1, Y2, are identical to X_names, Y1_names, and Y2_names,
+    # ensuring that X, Y1, and Y2 are factors with the correct order
+    if( identical(setdiff(X_names,  as.character(unique(tab$X))), character(0)) &
+        identical(setdiff(Y1_names, as.character(unique(tab$Y1))), character(0)) &
+        identical(setdiff(Y2_names, as.character(unique(tab$Y2))), character(0))){
+      tab$X = factor(tab$X, levels = X_names)
+      tab$Y1 = factor(tab$Y1, levels = Y1_names)
+      tab$Y2 = factor(tab$Y2, levels = Y2_names)
+    }
 
     #------------------------------------------------------------
     # Setting the starting location for optimization and/or MCMC
