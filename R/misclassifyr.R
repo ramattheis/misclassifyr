@@ -13,15 +13,16 @@
 #' @param X_names A character vector or list corresponding to the values of the regressor X.
 #' @param Y1_names A character vector or list corresponding to the values of the outcome Y1.
 #' @param Y2_names A character vector or list corresponding to the values of the instrument Y2.
+#' @param W_names A character vector corresponding to the values of the control W in each cell.
 #' @param model_to_Pi A function or list of functions mapping the parameters of a model for the joint distribution to the joint distribution `\eqn{\Pi}`.
 #' @param model_to_Delta A function or list of functions mapping the parameters of a model to the conditional distribution Y1, Y2 | Y*, `\eqn{\Delta}`.
 #' @param makeplots A logical value for whether to make trace plots and plots of \eqn{\Pi} and \eqn{Delta}. Defaults to TRUE.
 #' @param phi_0 A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Pi.
 #' @param psi_0 A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Delta.
+#' @param misclassification_size A numeric value between zero and 1/2 representing a guess for the average share of misclassified values in Y. The initial value for `psi_0` will have a diagonal of 1-`misclassification_size` if `psi_0` is not otherwise specified.
 #' @param split_eta An integer or list indicating where to split the vector `eta` in `phi` and `psi`, the arguments to `model_to_Pi` and `model_to_Delta` respectively.
 #' @param X_col_name A character vector corresponding to the variable of the regressor X, used only for plots.
 #' @param Y_col_name A character vector corresponding to the variable of the outcome Y, used only for plots.
-#' @param W_names A character vector corresponding to the values of the control W in each cell.
 #' @param estimate_beta A logical value indicating whether to regress Y on X.
 #' @param X_vals A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.
 #' @param Y_vals A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.
@@ -48,12 +49,13 @@ misclassifyr <- function(
     X_names,
     Y1_names,
     Y2_names,
+    W_names = NA,
     model_to_Pi = model_to_Pi_NP,
     model_to_Delta = model_to_Delta_NP_ind,
     makeplots = T,
     phi_0 = NA,
     psi_0 = NA,
-    W_names = NA,
+    misclassification_size = 0.2,
     estimate_beta = F,
     X_vals = NA,
     Y_vals = NA,
@@ -289,25 +291,26 @@ misclassifyr <- function(
 
     if(identical(phi_0,NA)){
       if(identical(attr(model_to_Pi,"name"),"model_to_Pi_NP")){
-        # Default starting location for phi_0 is the empirical distribution of X and Y1
-        tab_xy = tab |>
-          dplyr::group_by(X,Y1) |>
-          dplyr::summarise(n = sum(n),.groups = "drop") |>
-          as.data.frame()
-        tab_xy = tab_xy[order(tab_xy$Y1, tab_xy$X),]
-        tab_xy$p = tab_xy$n/sum(tab_xy$n)
-        phi_0 = softlog(tab_xy$p[1:(J*K-1)] / max(tab_xy$p[J*K], 1e-6))
-        rm(tab_xy)
+        ## Default starting location for phi_0 is the empirical distribution of X and Y1
+        #tab_xy = tab |>
+        #  dplyr::group_by(X,Y1) |>
+        #  dplyr::summarise(n = sum(n),.groups = "drop") |>
+        #  as.data.frame()
+        #tab_xy = tab_xy[order(tab_xy$Y1, tab_xy$X),]
+        #tab_xy$p = tab_xy$n/sum(tab_xy$n)
+        #phi_0 = softlog(tab_xy$p[1:(J*K-1)] / max(tab_xy$p[J*K], 1e-6))
+        #rm(tab_xy)
         # Default starting location for phi_0 is flat
-        # phi_0 = softlog(rep(1/(J*K), J*K-1 )/(1/(J*K)) )
+        phi_0 = softlog(rep(1/(J*K), J*K-1 )/(1/(J*K)) )
       }
     }
 
     if(identical(psi_0,NA)){
       if(identical(attr(model_to_Delta,"name"),"model_to_Delta_RL_ind")){
-        # Default starting location for psi_0 is uniform margin and 4/5 diagonal
+        # Default starting location for psi_0 is uniform margin and
+        # 1-misclassification_size diagonals
         row_0 = rep(1/J,J-1)
-        col_0 = rep(1/5,J)
+        col_0 = rep(misclassification_size,J)
         row_1 = softlog(row_0 / (1/J))
         row_2 = softlog(row_0 / (1/J))
         col_1 = softlog(col_0 / (1-col_0))
@@ -316,9 +319,10 @@ misclassifyr <- function(
         rm(list = c("row_0","row_1","row_2","col_0","col_1","col_2"))
       }
       if(identical(attr(model_to_Delta,"name"),"model_to_Delta_NP_ind")){
-        # Default starting location for psi_0 is RL with uniform margin and 4/5 diagonal
+        # Default starting location for psi_0 is RL with uniform margin and
+        # 1-misclassification_size diagonals
         row_0 = rep(1/J,J)
-        col_0 = rep(1/5,J)
+        col_0 = rep(misclassification_size,J)
         Delta_0 = diag(J)*(1-col_0) + outer(row_0,col_0,"*")
         Delta_1 = apply(Delta_0,2, function(d) softlog(d / d[length(d)]) )
         Delta_2 = apply(Delta_0,2, function(d) softlog(d / d[length(d)]) )
@@ -326,9 +330,10 @@ misclassifyr <- function(
         rm(list = c("row_0","col_0","Delta_0","Delta_1","Delta_2"))
       }
       if(identical(attr(model_to_Delta,"name"),"model_to_Delta_NP")){
-        # Default starting location for psi_0 is RL with uniform margin and 4/5 diagonal
+        # Default starting location for psi_0 is RL with uniform margin and
+        # 1-misclassification_size diagonals
         row_0 = rep(1/J,J)
-        col_0 = rep(1/5,J)
+        col_0 = rep(misclassification_size,J)
         Delta_0 = diag(J)*(1-col_0) + outer(row_0,col_0,"*")
         # Building the joint distribution Y1, Y2 conditional on Y*
         Delta_0 = lapply(1:ncol(Delta_0), function(j) diag(Delta_0[j,]) %*% t(Delta_0))
@@ -344,7 +349,6 @@ misclassifyr <- function(
 
     # Recording split_eta (the first position of psi in eta)
     split_eta = length(phi_0) + 1
-
 
     #------------------------------------------------------------
     # Defining the objective function for estimation
