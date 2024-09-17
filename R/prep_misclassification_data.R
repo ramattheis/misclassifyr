@@ -41,7 +41,7 @@ prep_misclassification_data <- function(
   #------------------------------------------------------------
 
   # Data should be a data.frame
-  if(!is.data.frame(data)){stop("Data should be a data.frame.")}
+  if(!is.data.frame(data)){stop("`data` should be a data.frame.")}
 
   # If any _bin variables are present, they all should be
   if(any(c(!identical(outcome_1_bin,NA),
@@ -72,6 +72,11 @@ prep_misclassification_data <- function(
 
   # Dropping data to the required columns
   data = data[,keep]
+
+  # Throwing an error if `data` contains NAs
+  if(any(is.na(data))){
+    stop("`data` shouldn't contain any NA values in the relevant columns.")
+  }
 
   # Passing a warning if any of the reserved column names (generated in this function) are in use
   if(("weight" %in% colnames(data))){warning("A column named 'weight' is present in `data` and will be overwritten")}

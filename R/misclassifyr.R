@@ -252,6 +252,11 @@ misclassifyr <- function(
     if( !(class(tab$n) %in% c("double","numeric","integer") ) | min(tab$n) < 0){
       stop("`n` should take non-negative integer values representing counts (or weighted counts) of unique values of `X`, `Y1`, and `Y2`")
     }
+    # Throwing an error if `tab` contains NAs
+    if(any(is.na(tab))){
+      stop("`tab` shouldn't contain any NA values")
+    }
+
     # Throwing an error if no starting location is found for user-defined model_to_Pi or model_to_Delta
     if(is.na(phi_0) & identical(attr(model_to_Pi,"name"),NULL)){
       stop("`phi_0` must be defined if `model_to_Pi` is user-defined.")
