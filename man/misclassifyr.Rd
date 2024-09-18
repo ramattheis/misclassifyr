@@ -39,7 +39,7 @@ misclassifyr(
 )
 }
 \arguments{
-\item{tab}{A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should be numeric with names \code{Y1}, \code{Y2}, \code{X}, and \code{n} where \code{Y1} and \code{Y2} take each value between \code{1} and \code{J}, \code{X} takes each value between \code{1} and \code{K}, and}
+\item{tab}{A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names \code{Y1}, \code{Y2}, \code{X}, and \code{n} where \code{n} is a non-negative numeric vector corresponding to the counts of \code{Y1},\code{Y2}, and \code{X}. The rows should be ordered according to \code{order(Y2,Y1,X)}.}
 
 \item{J}{An integer or list corresponding to the number of unique values of \code{Y1} and \code{Y2}.}
 
