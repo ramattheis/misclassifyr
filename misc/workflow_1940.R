@@ -28,7 +28,8 @@ out_ABE = misclassifyr(
   X_vals = tab_ABE$X_vals,
   Y_vals = tab_ABE$Y_vals,
   X_col_name = "Years of Education",
-  Y_col_name = "Wages"
+  Y_col_name = "Wages",
+  makeplots = F
 )
 
 tab_ABE_cat = prep_misclassification_data(

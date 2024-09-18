@@ -967,14 +967,18 @@ misclassifyr <- function(
                          axis.title = ggplot2::element_text(size = 12))
       }
 
+
+    } else {
+      Pi_hat_mle_plot = NA
+      Delta_hat_mle_plot = NA
     }
 
   } else {
 
-      Pi_hat_mle_plot = NA
-      Delta_hat_mle_plot = NA
+    Pi_hat_mle_plot = NA
+    Delta_hat_mle_plot = NA
 
-    }
+  }
 
   if(bayesian){ # Are there Bayesian estimates?
 
