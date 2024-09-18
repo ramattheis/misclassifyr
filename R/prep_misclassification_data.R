@@ -94,7 +94,7 @@ prep_misclassification_data <- function(
   # Either record_vals = T OR X_names and Y_names should be provided
   if((record_vals)){
     if(!identical(X_names, NA) & !identical(Y1_names, NA) & !identical(Y2_names, NA)  ){
-      stop("If `record_vals`==T, `X_names`, `Y1_names`, and `Y_2names` should not be provided.")
+      stop("If `record_vals`==T, `X_names`, `Y1_names`, and `Y2_names` should not be provided.")
       }
   } else {
     if(identical(X_names, NA) | identical(Y1_names, NA) | identical(Y2_names,NA)){
@@ -140,7 +140,14 @@ prep_misclassification_data <- function(
     data[,regressor] = factor(data[,regressor], levels = X_names)
     data[,outcome_1] = factor(data[,outcome_1], levels = Y1_names)
     data[,outcome_2] = factor(data[,outcome_2], levels = Y2_names)
+
+    # If this step introduces NAs, throwing an error
+    if(any(is.na(data))){
+      stop("NAs introduced when converting variables to factors")
+    }
   }
+
+
 
   # Renaming the outcomes and the regressor
   data$X = data[,regressor]
@@ -165,9 +172,6 @@ prep_misclassification_data <- function(
   #------------------------------------------------------------
   # Tabulating
   #------------------------------------------------------------
-
-  # First, ordering data by X, Y1, Y2
-  data = data[order(data$X,data$Y1,data$Y2),]
 
   # Defining a function to tabulate one cell of data
   tabulate = function(cell){
@@ -195,9 +199,9 @@ prep_misclassification_data <- function(
 
     # Recording the names of the outcome and the regressor
     if(identical(X_names,NA)){
-      X_names = unique(cell$X) |> round(digits = round_vals) |> as.character()
-      Y1_names = unique(cell$Y1) |> round(digits = round_vals) |> as.character()
-      Y2_names = unique(cell$Y2) |> round(digits = round_vals) |> as.character()
+      X_names = unique(cell$X) |> sort() |> round(digits = round_vals) |> as.character()
+      Y1_names = unique(cell$Y1) |> sort() |> round(digits = round_vals) |> as.character()
+      Y2_names = unique(cell$Y2) |> sort() |> round(digits = round_vals) |> as.character()
     }
 
     # Recording the values of the outcome and the regressor
@@ -221,9 +225,9 @@ prep_misclassification_data <- function(
 
     # Tabulating the cell by regressor and outcome
     tab = cell |>
-      dplyr::arrange(X,Y1,Y2) |>
       dplyr::group_by(X,Y1,Y2) |>
       dplyr::summarise(n = sum(weight),.groups = "drop") |>
+      dplyr::arrange(Y2,Y1,X) |>
       as.data.frame()
 
     # Returning tabulations, names, and values
