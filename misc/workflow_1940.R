@@ -31,37 +31,29 @@ out_ABE = misclassifyr(
   Y_col_name = "Wages"
 )
 
+tab_ABE_cat = prep_misclassification_data(
+  data = subset(linked_ABE, !is.na(incwage_B)  & !is.na(incwage_B_inst) & !is.na(yrs_educ_A) ),
+  outcome_1 = "incwage_bin_B",
+  outcome_2 = "incwage_bin_B_inst",
+  regressor = "yrs_educ_bin_A",
+  X_names = c("0", "4", "7", "10", "12", "14", "16", "18"),
+  Y1_names = c("= $0", "< $500", "< $1000", "< $1500", "< $2000", "< $2500", "< $3000", "> $3000"),
+  Y2_names = c("= $0", "< $500", "< $1000", "< $1500", "< $2000", "< $2500", "< $3000", "> $3000"),
+  controls = NA,
+  weights = NA,
+  record_vals = F,
+  round_vals = 0
+)
 
-
-tab = tab_ABE$tab
-J = tab_ABE$J
-K = tab_ABE$J
-X_names = tab_ABE$X_names
-Y1_names = tab_ABE$Y1_names
-Y2_names = tab_ABE$Y2_names
-model_to_Pi = model_to_Pi_NP
-model_to_Delta = model_to_Delta_NP_ind
-makeplots = T
-phi_0 = NA
-psi_0 = NA
-W_names = NA
-estimate_beta = T
-X_vals = tab_ABE$X_vals
-Y_vals = tab_ABE$Y_vals
-X_col_name = "Years of Education"
-Y_col_name = "Wages"
-mle = T
-optim_tol = 1e-8
-optim_maxit = 1e5
-check_stability = F
-stability_sd = 0.1
-bayesian = F
-log_prior_Pi = log_prior_Pi_NP
-log_prior_Delta = log_prior_Delta_NP_ind
-n_mcmc_draws = 1e4
-n_burnin = 5e3
-thinning_rate = 1
-gibbs_proposal_sd = 0.1
-cores = 1
-
-
+out_ABE_cat = misclassifyr(
+  tab = tab_ABE_cat$tab,
+  J = tab_ABE_cat$J,
+  K = tab_ABE_cat$J,
+  X_names = tab_ABE_cat$X_names,
+  Y1_names = tab_ABE_cat$Y1_names,
+  Y2_names = tab_ABE_cat$Y2_names,
+  model_to_Delta = model_to_Delta_NP_ind,
+  estimate_beta = F,
+  X_col_name = "Years of Education",
+  Y_col_name = "Wages"
+)

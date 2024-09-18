@@ -7,7 +7,7 @@
 #' @import numDeriv
 #' @import ggplot2
 #'
-#' @param tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should be numeric with names `Y1`, `Y2`, `X`, and `n` where `Y1` and `Y2` take each value between `1` and `J`, `X` takes each value between `1` and `K`, and
+#' @param tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names `Y1`, `Y2`, `X`, and `n` where `n` is a non-negative numeric vector corresponding to the counts of `Y1`,`Y2`, and `X`. The rows should be ordered according to `order(Y2,Y1,X)`.
 #' @param J An integer or list corresponding to the number of unique values of `Y1` and `Y2`.
 #' @param K An integer or list corresponding to the number of unique values of `X`.
 #' @param X_names A character vector or list corresponding to the values of the regressor X.
@@ -285,23 +285,26 @@ misclassifyr <- function(
       tab$Y2 = factor(tab$Y2, levels = Y2_names)
     }
 
+    # Ensuring tab has the correct order
+    tab = tab[order(tab$Y2,tab$Y1,tab$X),]
+
     #------------------------------------------------------------
     # Setting the starting location for optimization and/or MCMC
     #------------------------------------------------------------
 
     if(identical(phi_0,NA)){
       if(identical(attr(model_to_Pi,"name"),"model_to_Pi_NP")){
-        ## Default starting location for phi_0 is the empirical distribution of X and Y1
-        #tab_xy = tab |>
-        #  dplyr::group_by(X,Y1) |>
-        #  dplyr::summarise(n = sum(n),.groups = "drop") |>
-        #  as.data.frame()
-        #tab_xy = tab_xy[order(tab_xy$Y1, tab_xy$X),]
-        #tab_xy$p = tab_xy$n/sum(tab_xy$n)
-        #phi_0 = softlog(tab_xy$p[1:(J*K-1)] / max(tab_xy$p[J*K], 1e-6))
-        #rm(tab_xy)
-        # Default starting location for phi_0 is flat
-        phi_0 = softlog(rep(1/(J*K), J*K-1 )/(1/(J*K)) )
+        # Default starting location for phi_0 is the empirical distribution of X and Y1
+        tab_xy = tab |>
+          dplyr::group_by(X,Y1) |>
+          dplyr::summarise(n = sum(n),.groups = "drop") |>
+          as.data.frame()
+        tab_xy = tab_xy[order(tab_xy$Y1, tab_xy$X),]
+        tab_xy$p = tab_xy$n/sum(tab_xy$n)
+        phi_0 = softlog(tab_xy$p[1:(J*K-1)] / max(tab_xy$p[J*K], 1e-6))
+        rm(tab_xy)
+        ## Default starting location for phi_0 is flat
+        #phi_0 = softlog(rep(1/(J*K), J*K-1 )/(1/(J*K)) )
       }
     }
 

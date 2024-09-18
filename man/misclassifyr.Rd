@@ -11,12 +11,13 @@ misclassifyr(
   X_names,
   Y1_names,
   Y2_names,
+  W_names = NA,
   model_to_Pi = model_to_Pi_NP,
   model_to_Delta = model_to_Delta_NP_ind,
   makeplots = T,
   phi_0 = NA,
   psi_0 = NA,
-  W_names = NA,
+  misclassification_size = 0.2,
   estimate_beta = F,
   X_vals = NA,
   Y_vals = NA,
@@ -50,6 +51,8 @@ misclassifyr(
 
 \item{Y2_names}{A character vector or list corresponding to the values of the instrument Y2.}
 
+\item{W_names}{A character vector corresponding to the values of the control W in each cell.}
+
 \item{model_to_Pi}{A function or list of functions mapping the parameters of a model for the joint distribution to the joint distribution \verb{\eqn{\Pi}}.}
 
 \item{model_to_Delta}{A function or list of functions mapping the parameters of a model to the conditional distribution Y1, Y2 | Y*, \verb{\eqn{\Delta}}.}
@@ -60,7 +63,7 @@ misclassifyr(
 
 \item{psi_0}{A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Delta.}
 
-\item{W_names}{A character vector corresponding to the values of the control W in each cell.}
+\item{misclassification_size}{A numeric value between zero and 1/2 representing a guess for the average share of misclassified values in Y. The initial value for \code{psi_0} will have a diagonal of 1-\code{misclassification_size} if \code{psi_0} is not otherwise specified.}
 
 \item{estimate_beta}{A logical value indicating whether to regress Y on X.}
 
