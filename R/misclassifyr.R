@@ -260,10 +260,10 @@ misclassifyr <- function(
     }
 
     # Throwing an error if no starting location is found for user-defined model_to_Pi or model_to_Delta
-    if(is.na(phi_0) & identical(attr(model_to_Pi,"name"),NULL)){
+    if(identical(phi_0, NA)  & identical(attr(model_to_Pi,"name"),NULL)){
       stop("`phi_0` must be defined if `model_to_Pi` is user-defined.")
     }
-    if(is.na(psi_0) & identical(attr(model_to_Delta,"name"),NULL)){
+    if(identical(psi_0, NA) & identical(attr(model_to_Delta,"name"),NULL)){
       stop("`psi_0` must be defined if `model_to_Delta` is user-defined.")
     }
     # Throwing an error if tab is not balanced
