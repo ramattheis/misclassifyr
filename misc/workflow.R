@@ -14,7 +14,6 @@ misclassifyr_inputs_continuous = prep_misclassification_data(
   outcome_1_bin = "son_occupation_1780",
   outcome_2_bin = "son_occupation_1770",
   regressor_bin = "father_occupation_1750",
-  controls = "birthplace",
   weights = "linked_weight",
   record_vals = T,
   round_vals = 0
@@ -36,9 +35,7 @@ out_reg = misclassifyr(
   estimate_beta = T,
   X_col_name = "Father's income in 1750",
   Y_col_name = "Son's income in 1780",
-  bayesian = T,
-  log_prior_Delta = log_prior_Delta_NP_ind,
-  cores = 4
+  makeplots = F
 )
 
 

@@ -178,14 +178,14 @@ prep_misclassification_data <- function(
 
     # Averaging X, Y1, Y2 within cell if _bins are provided
     if(!identical(regressor_bin, NA) & (record_vals)){
-      # averaging within bins for
+      # averaging within bins
       cell = cell |>
         dplyr::group_by(X_bin) |>
-        dplyr::mutate(X = mean(X)) |>
+        dplyr::mutate(X = sum(X*weight)/sum(weight) ) |>
         dplyr::group_by(Y1_bin) |>
-        dplyr::mutate(Y1 = mean(Y1)) |>
+        dplyr::mutate(Y1 = sum(Y1*weight)/sum(weight) ) |>
         dplyr::group_by(Y2_bin) |>
-        dplyr::mutate(Y2 = mean(Y2)) |>
+        dplyr::mutate(Y2 = sum(Y2*weight)/sum(weight) ) |>
         as.data.frame()
 
       # Dropping binning variables

@@ -98,11 +98,11 @@ misclassifyr <- function(
   if(!identical(thinning_rate%%1,0)){ stop("`thinning_rate` should be an integer.") }
   if(identical(as.numeric(gibbs_proposal_sd),NA)){ stop("`gibbs_proposal_sd` should be numeric.") }
 
-  # Throwing an error if n_burnin or n_mcmc_draws is too small
-  if(n_mcmc_draws < 10000){ stop("`n_mcmc_draws` is too small. Choose a value of at least 10000.")}
-  if(n_burnin < 5000){ stop("`n_burnin` is too small. Choose a value of at least 5000.")}
+  # Throwing a warning if n_burnin or n_mcmc_draws is too small
+  if(n_mcmc_draws < 10000){ warning("`n_mcmc_draws` is too small. Choose a value of at least 10000.")}
+  if(n_burnin < 5000){ warning("`n_burnin` is too small. Choose a value of at least 5000.")}
 
-  # Throwing an error if the relative size of n_mcmc_draws/ n_burnin /
+  # Throwing an error if the relative size of n_mcmc_draws/ n_burnin
   if(n_mcmc_draws - n_burnin < 1000){ stop("`n_burnin` is too close to `n_mcmc_draws`. Choose a smaller `n_burnin` or a larger `n_mcmc_draws`.")}
   if((n_mcmc_draws - n_burnin)/thinning_rate < 1000){ stop("`thinning_rate` is too large. Choose a smaller `n_thinning_rate` or a larger gap between `n_burnin` and `n_mcmc_draws`.")}
 
