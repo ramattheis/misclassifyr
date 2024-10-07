@@ -1,10 +1,9 @@
-#' Creates a function for model_to_Delta based on RL structure errors and the empirical distribution of Y1 and Y2
+#' Creates a function for model_to_Delta based on RL structure errors and the empirical distribution of Y1 and Y2 assuming RL errors are independent of Y*
 #'
 #' @param tab tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names `Y1`, `Y2`, `X`, and `n` where `n` is a non-negative numeric vector corresponding to the counts of `Y1`,`Y2`, and `X`. The rows should be ordered according to `order(Y2,Y1,X)`.
-#' @param J An integer or list corresponding to the number of unique values of `Y1` and `Y2`.
 #' @return A list including 1. a function or a list of functions that map model parameters `psi` to the misclassification matrix `Delta`, 2. a vector or list of vectors corresponding to initial values of psi , and 3. a function or list of functions for the log prior of Delta in this model.
 #' @export
-make_empirical_Delta_RL = function(tab,J){
+make_empirical_Delta_RL_common_alpha = function(tab){
 
   #------------------------------------------------------------
   # Catching input errors
@@ -62,16 +61,16 @@ make_empirical_Delta_RL = function(tab,J){
         alpha = exp(psi)/(1+exp(psi))
 
         # Splitting phi into components associated with Y1 and Y2
-        alpha1 = alpha[1:(length(alpha)/2)]
-        alpha2 = alpha[(length(alpha)/2 +1):length(alpha)]
+        alpha1 = alpha[1]
+        alpha2 = alpha[2]
 
         # Recording the marginal distribution of Y1 and Y2
         FY1 = FY12[1:(length(FY12)/2)]
         FY2 = FY12[(length(FY12)/2 + 1):length(FY12)]
 
         # Computing the misclassification error distribution
-        Delta1 = diag(1-alpha1) + FY1 %*% t(alpha1)
-        Delta2 = diag(1-alpha2) + FY2 %*% t(alpha2)
+        Delta1 = diag(rep(1-alpha1,length(FY1))) + FY1 %*% t(rep(alpha1,length(FY1)))
+        Delta2 = diag(rep(1-alpha2,length(FY2))) + FY2 %*% t(rep(alpha2,length(FY2)))
         Delta = lapply(1:nrow(Delta2), function(j) diag(Delta2[j,]) %*% t(Delta1))
         Delta = do.call(cbind, Delta)
 
@@ -105,12 +104,12 @@ make_empirical_Delta_RL = function(tab,J){
         alpha = exp(psi)/(1+exp(psi))
 
         # Splitting phi into components associated with Y1 and Y2
-        alpha1 = alpha[1:(length(alpha)/2)]
-        alpha2 = alpha[(length(alpha)/2 +1):length(alpha)]
+        alpha1 = alpha[1]
+        alpha2 = alpha[2]
 
         # Computing the misclassification error distribution
-        Delta1 = diag(1-alpha1) + FY1 %*% t(alpha1)
-        Delta2 = diag(1-alpha2) + FY2 %*% t(alpha2)
+        Delta1 = diag(rep(1-alpha1,length(FY1))) + FY1 %*% t(rep(1-alpha1,length(FY1)))
+        Delta2 = diag(rep(1-alpha2,length(FY2))) + FY2 %*% t(rep(1-alpha2,length(FY2)))
         Delta = lapply(1:nrow(Delta2), function(j) diag(Delta2[j,]) %*% t(Delta1))
         Delta = do.call(cbind, Delta)
 
@@ -126,9 +125,9 @@ make_empirical_Delta_RL = function(tab,J){
   #------------------------------------------------------------
 
   if(class(tab) == "list"){
-    psi_0 = lapply(seq_along(tab), function(i) rep(-2,2*J[[i]]))
+    psi_0 = lapply(seq_along(tab), function(i) rep(-2,2))
   } else {
-    psi_0 = rep(-2,2*J)
+    psi_0 = rep(-2,2)
   }
 
   #------------------------------------------------------------
@@ -136,9 +135,9 @@ make_empirical_Delta_RL = function(tab,J){
   #------------------------------------------------------------
 
   if(class(tab) == "list"){
-    log_prior_Delta = replicate(length(tab), function(psi) sum(dlogis(psi, log = T)))
+    log_prior_Delta = replicate(length(tab), function(psi) sum(dlogis(psi, log = T)) )
   } else {
-    log_prior_Delta = function(psi) {return(sum(dlogis(psi, log = T)))}
+    log_prior_Delta = function(psi){ sum(dlogis(psi, log=T)) }
   }
 
   #------------------------------------------------------------
@@ -153,4 +152,3 @@ make_empirical_Delta_RL = function(tab,J){
   ))
 
 }
-

@@ -26,7 +26,10 @@ Y1_names = tab_ABE$Y1_names
 Y2_names = tab_ABE$Y2_names
 W_names = tab_ABE$W_names
 model_to_Pi = model_to_Pi_NP
-model_to_Delta = model_to_Delta_NP
+
+Delta_info = make_empirical_Delta_RL(tab, J)
+
+model_to_Delta =
 estimate_beta = T
 phi_0 = NA
 psi_0 = rep(-2,16)
