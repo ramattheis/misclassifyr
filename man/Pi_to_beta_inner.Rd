@@ -21,3 +21,4 @@ A scalar equal to beta.
 \description{
 Maps the joint distribution, Pi, of X and Y* to a scalar, beta
 }
+\keyword{internal}

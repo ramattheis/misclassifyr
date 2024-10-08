@@ -20,6 +20,8 @@
 #' @param phi_0 A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Pi.
 #' @param psi_0 A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Delta.
 #' @param misclassification_size A numeric value between zero and 1/2 representing a guess for the average share of misclassified values in Y. The initial value for `psi_0` will have a diagonal of 1-`misclassification_size` if `psi_0` is not otherwise specified.
+#' @param X_vals A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.
+#' @param Y_vals A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.
 #' @param split_eta An integer or list indicating where to split the vector `eta` in `phi` and `psi`, the arguments to `model_to_Pi` and `model_to_Delta` respectively.
 #' @param X_col_name A character vector corresponding to the variable of the regressor X, used only for plots.
 #' @param Y_col_name A character vector corresponding to the variable of the outcome Y, used only for plots.
@@ -53,7 +55,6 @@ misclassifyr <- function(
     phi_0 = NA,
     psi_0 = NA,
     misclassification_size = 0.2,
-    estimate_beta = F,
     X_vals = NA,
     Y_vals = NA,
     X_col_name = "X",
@@ -458,7 +459,7 @@ misclassifyr <- function(
       fisher_info = -1*mle_out$hessian[1:(split_eta-1),1:(split_eta-1)]
       if (abs(det(fisher_info)) < 1e-9) {
         fisher_info_err = "Fisher information matrix is not invertible."
-        warning("The Fisher information matrix is not invertible; using the Moore-Penrose inverse instead -- analytical variances may be inaccurate.  Consider reporting highest posterior density (HPD) sets or other credible intervals instead.")
+        warning("The Fisher information matrix is not invertible; using the Moore-Penrose inverse instead -- analytical variances may be inaccurate.  Consider reporting highest posterior density (HPD) sets instead.")
       } else {
         fisher_info_err = "Fisher information matrix is invertible."
       }
@@ -739,6 +740,21 @@ misclassifyr <- function(
     # Returning estimates and other info
     #------------------------------------------------------------
 
+    # Binding model inputs for simplicity
+    misclassification_inputs = list(
+      tab = tab,
+      J = J,
+      K = K,
+      X_names = X_names,
+      Y1_names = Y1_names,
+      Y2_names = Y2_names,
+      X_vals = X_vals,
+      Y_vals = Y_vals,
+      phi_0 = phi_0,
+      psi_0 = psi_0,
+      eta_0 = eta_0
+    )
+
     # Return results
     return(list(
       Pi_hat_mle = Pi_hat_mle,
@@ -746,6 +762,7 @@ misclassifyr <- function(
       cov_Pi_mle = cov_Pi_mle,
       eta_hat_mle = eta_hat_mle,
       log_likelihood_mle = log_likelihood_mle,
+      W_weights = sum(tab$n),
       optim_counts = optim_counts,
       model_to_Pi_jacobian = model_to_Pi_jacobian,
       eta_hessian_mle = eta_hessian_mle,
@@ -759,18 +776,7 @@ misclassifyr <- function(
       trace_plots_eta = trace_plots_eta,
       trace_plots_Pi = trace_plots_Pi,
       trace_plots_Delta = trace_plots_Delta,
-      tab = tab,
-      J = J,
-      K = K,
-      X_names = X_names,
-      Y1_names = Y1_names,
-      Y2_names = Y2_names,
-      X_vals = X_vals,
-      Y_vals = Y_vals,
-      W_weight = sum(tab$n),
-      phi_0 = phi_0,
-      psi_0 = psi_0,
-      eta_0 = eta_0
+      misclassification_inputs = misclassification_inputs
     ))
 
   }
@@ -831,11 +837,11 @@ misclassifyr <- function(
     # Were there any errors in the estimation process?
     fisher_info_errs = unlist(misclassification_output$fisher_info_err)
     if(any(fisher_info_errs ==  "Fisher information matrix is not invertible.")){
-      warning("The Fisher information matrix was not invertible in at least one control cell is not invertible. Analytical standard errors for the MLE may not be reliable. Consider reporting highest posterior density (HPD) sets or other credible intervals instead.")
+      warning("The Fisher information matrix was not invertible in at least one control cell is not invertible. Analytical standard errors for the MLE may not be reliable. Consider reporting highest posterior density (HPD) sets instead.")
     }
     inconsistencies_mle = unlist(misclassification_output$inconsistency_mle)
     if(any(inconsistencies_mle > 0.1)){
-      warning("Optimal theta is inconsistent across starting locations; point identification may fail.  Consider reporting highest posterior density (HPD) sets or other credible intervals instead.")
+      warning("Optimal theta is inconsistent across starting locations; point identification may fail.  Consider reporting highest posterior density (HPD) sets instead.")
     }
 
 

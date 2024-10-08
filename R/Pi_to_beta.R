@@ -1,6 +1,6 @@
-#' Estimate a linear regression coefficien beta from the joint distribution Pi
+#' Estimate a linear regression coefficient \eqn{\beta} from the joint distribution Pi
 #'
-#' This function computes \eqn{\beta} in the linear regression \eqn{Y^\* = \alpha + \beta X + \epsilon} given the joint distribution of \eqn{X} and \eqn{Y^\*}, \eqn{\Pi}, and a set of scalars associated with each value of \eqn{X} and \eqn{Y^\*}.
+#' This function computes \eqn{\beta} in the linear regression \eqn{Y^* = \alpha + \beta X + \epsilon} given the joint distribution of \eqn{X} and \eqn{Y^*}, \eqn{\Pi}, and a set of scalars associated with each value of \eqn{X} and \eqn{Y^*}.
 #'
 #' @param X_vals A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.
 #' @param Y_vals A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.
@@ -10,10 +10,12 @@
 #' @param bayesian Logical value indicating whether posterior draws of \eqn{\Pi} have been provided. Defaults to `FALSE`.
 #' @param Pi_mle A numeric vector or list of numeric vectors containing the elements of Pi.
 #' @param cov_Pi A numeric vector or a list of numeric vectors representing the covariance of estimates of the elements of Pi.
+#' @export
 Pi_to_beta = function(
     X_vals,
     Y_vals,
     W_weights = NA,
+    W_names = NA,
     mle = T,
     bayesian = F,
     Pi_mle = NA,
@@ -27,7 +29,7 @@ Pi_to_beta = function(
 
   if(mle){
     # Throwing an error if MLE esimates and variances of Pi aren't provided
-    if(identical(Pi_mle, NA) | identical(cov_Pi,NA)){
+    if((identical(Pi_mle, NA) | identical(cov_Pi,NA))){
       stop("If `mle == TRUE`, `Pi_mle` and `cov_Pi` should be provided.")
     }
     # Throwing an error if not all objects are lists / all objects are not lists

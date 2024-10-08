@@ -23,3 +23,4 @@ A scalar equal to the standard error of beta.
 \description{
 Computes the standard error of beta as function of the joint distribution of X and Y*, Pi
 }
+\keyword{internal}

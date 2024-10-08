@@ -18,7 +18,6 @@ misclassifyr(
   phi_0 = NA,
   psi_0 = NA,
   misclassification_size = 0.2,
-  estimate_beta = F,
   X_vals = NA,
   Y_vals = NA,
   X_col_name = "X",
@@ -64,6 +63,10 @@ misclassifyr(
 \item{psi_0}{A numeric vector or list of numeric vectors providing the starting location for optimization for the argument to model_to_Delta.}
 
 \item{misclassification_size}{A numeric value between zero and 1/2 representing a guess for the average share of misclassified values in Y. The initial value for \code{psi_0} will have a diagonal of 1-\code{misclassification_size} if \code{psi_0} is not otherwise specified.}
+
+\item{X_vals}{A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.}
+
+\item{Y_vals}{A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.}
 
 \item{X_col_name}{A character vector corresponding to the variable of the regressor X, used only for plots.}
 
