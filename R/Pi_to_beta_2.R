@@ -5,7 +5,6 @@
 #' @param X_vals A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.
 #' @param Y_vals A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.
 #' @param W_weights A numeric vector representing the sample size of each control cell.
-#' @param W_names A character vector corresponding to the values of the control \eqn{W} in each cell.
 #' @param mle Logical value indicating whether maximum likelihood estimates of \eqn{\Pi} have been provided. Defaults to `TRUE`.
 #' @param bayesian Logical value indicating whether posterior draws of \eqn{\Pi} have been provided. Defaults to `FALSE`.
 #' @param Pi_mle A numeric vector or list of numeric vectors containing the elements of Pi.
@@ -27,7 +26,7 @@ Pi_to_beta = function(
 
   if(mle){
     # Throwing an error if MLE esimates and variances of Pi aren't provided
-    if(identical(Pi_mle, NA) | identical(cov_Pi,NA)){
+    if(identical(Pi_mle, NA) | identical()){
       stop("If `mle == TRUE`, `Pi_mle` and `cov_Pi` should be provided.")
     }
     # Throwing an error if not all objects are lists / all objects are not lists
@@ -37,7 +36,7 @@ Pi_to_beta = function(
       stop("If `Pi_mle` or `posterior_Pi` is a list, both should be lists of the same length.  ")
     }
     # Throwing an error if W_weights is not provided
-    if(class(Pi_mle) == "list" & identical(W_weights, NA)){
+    if(class(Pi_mle) == list & identical(W_weights, NA)){
       stop("If `Pi_mle` is a list, `W_weights` should be provided.")
     }
   }
@@ -47,14 +46,9 @@ Pi_to_beta = function(
       stop("If `bayesian == TRUE`, `posterior_Pi` should be provided.")
     }
     # Throwing an error if W_weights is not provided
-    if(class(posterior_Pi) == "list" & identical(W_weights, NA)){
-      stop("If `posterior_Pi` is a list, `W_weights` should be provided.")
+    if(class(Pi_mle) == list & identical(W_weights, NA)){
+      stop("If `Pi_mle` is a list, `W_weights` should be provided.")
     }
-  }
-
-  if(identical(W_names, NA) &  !identical(W_weights, NA)){
-    # Naming control cells if no names are provided
-    W_names = paste0("control cell ",seq_along(W_weights))
   }
 
   #------------------------------------------------------------
@@ -65,17 +59,17 @@ Pi_to_beta = function(
   if(mle){
 
     # Extracting W_weights and normalizing
-    W_weights = unlist(W_weights)
+    W_weights = unlist(misclassification_output$W_weight)
     W_weights = W_weights/sum(W_weights)
 
     # Estimating beta given Pi
-    beta_hat_mle = Pi_to_beta_inner(Pi_mle, X_vals, Y_vals, W_weights)
+    beta_hat_mle = Pi_to_beta_inner(misclassification_output$Pi_hat_mle, X_vals, Y_vals, W_weights)
     names(beta_hat_mle) = "MLE beta"
 
     # Estimating the SE via the delta method
     se_beta_mle = se_beta_deltamethod(
-      Pi = Pi_mle,
-      cov_Pi = cov_Pi,
+      Pi = misclassification_output$Pi_hat_mle,
+      cov_Pi = misclassification_output$cov_Pi_mle,
       X_vals,
       Y_vals,
       W_weights
@@ -83,16 +77,16 @@ Pi_to_beta = function(
     names(se_beta_mle) = "SE for MLE beta"
 
     # If controls are used, returning a list of betas within each cell
-    if(class(Pi_mle) == "list"){
+    if(class(tab) == "list"){
 
       # Estimating beta within each control cell
       betas_hat_mle = sapply(seq_along(W_names), function(j)
-        Pi_to_beta_inner(Pi_mle[[j]], X_vals[[j]], Y_vals[[j]], 1))
+        Pi_to_beta_inner(misclassification_output$Pi_hat_mle[[j]], X_vals[[j]], Y_vals[[j]], 1))
       names(betas_hat_mle) = paste("MLE beta in cell", W_names)
 
       # Estimating the SE in each control cell
       se_betas_mle = sapply(seq_along(W_names), function(j)
-        se_beta_deltamethod(Pi_mle[[j]], cov_Pi[[j]], X_vals[[j]], Y_vals[[j]], 1))
+        se_beta_deltamethod(misclassification_output$Pi_hat_mle[[j]], misclassification_output$cov_Pi_mle[[j]], X_vals[[j]], Y_vals[[j]], 1))
       names(se_betas_mle) = paste("SE for MLE beta in cell", W_names)
 
     } else {
@@ -120,7 +114,7 @@ Pi_to_beta = function(
     if(class(tab) == "list"){
 
       # Extracting W_weights and normalizing
-      W_weights = unlist(W_weights)
+      W_weights = unlist(misclassification_output$W_weight)
       W_weights = W_weights/sum(W_weights)
 
       # Defining a quick function to aggregate the posterior across control cells

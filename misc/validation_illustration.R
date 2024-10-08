@@ -18,6 +18,55 @@ tab_ABE = prep_misclassification_data(
   round_vals = 0
 )
 
+
+Delta_info = make_empirical_Delta_RL_common_alpha_mixed_NP(tab_ABE$tab, tab_ABE$J)
+
+mcout_emp = misclassifyr(
+  tab = tab_ABE$tab,
+  J = tab_ABE$J,
+  K = tab_ABE$J,
+  X_names = tab_ABE$X_names,
+  Y1_names = tab_ABE$Y1_names,
+  Y2_names = tab_ABE$Y2_names,
+  W_names = tab_ABE$W_names,
+  model_to_Pi = model_to_Pi_NP,
+  model_to_Delta = Delta_info$model_to_Delta,
+  estimate_beta = T,
+  phi_0 = NA,
+  psi_0 = Delta_info$psi_0,
+  X_vals = tab_ABE$X_vals,
+  Y_vals = tab_ABE$Y_vals,
+  X_col_name = "Years of Education",
+  Y_col_name = "Wages",
+  cores = 3
+)
+
+
+
+Delta_info_common = make_empirical_Delta_RL_common_alpha(tab_ABE$tab)
+
+mcout_emp = misclassifyr(
+  tab = tab_ABE$tab,
+  J = tab_ABE$J,
+  K = tab_ABE$J,
+  X_names = tab_ABE$X_names,
+  Y1_names = tab_ABE$Y1_names,
+  Y2_names = tab_ABE$Y2_names,
+  W_names = tab_ABE$W_names,
+  model_to_Pi = model_to_Pi_NP,
+  model_to_Delta = Delta_info_common$model_to_Delta,
+  estimate_beta = T,
+  phi_0 = NA,
+  psi_0 = Delta_info_common$psi_0,
+  X_vals = tab_ABE$X_vals,
+  Y_vals = tab_ABE$Y_vals,
+  X_col_name = "Years of Education",
+  Y_col_name = "Wages",
+  cores = 3
+)
+
+
+
 tab = tab_ABE$tab
 J = tab_ABE$J
 K = tab_ABE$J
@@ -26,13 +75,11 @@ Y1_names = tab_ABE$Y1_names
 Y2_names = tab_ABE$Y2_names
 W_names = tab_ABE$W_names
 model_to_Pi = model_to_Pi_NP
-
 Delta_info = make_empirical_Delta_RL(tab, J)
-
-model_to_Delta =
+model_to_Delta = Delta_info$model_to_Delta
 estimate_beta = T
 phi_0 = NA
-psi_0 = rep(-2,16)
+psi_0 = Delta_info$psi_0
 X_vals = tab_ABE$X_vals
 Y_vals = tab_ABE$Y_vals
 X_col_name = "Years of Education"
@@ -47,7 +94,7 @@ check_stability = F
 stability_sd = 0.1
 bayesian = T
 log_prior_Pi = log_prior_Pi_NP
-log_prior_Delta = log_prior_Delta_NP_ind
+log_prior_Delta = Delta_info$log_prior_Delta
 n_mcmc_draws = 2e3
 n_burnin = 1e3
 thinning_rate = 1

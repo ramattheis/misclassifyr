@@ -58,10 +58,10 @@ make_empirical_Delta_RL = function(tab,J){
 
       function(psi) {
 
-        # Transforming phi to return to probabilities (no sum-to-one constraint)
+        # Transforming psi to return to probabilities (no sum-to-one constraint)
         alpha = exp(psi)/(1+exp(psi))
 
-        # Splitting phi into components associated with Y1 and Y2
+        # Splitting psi into components associated with Y1 and Y2
         alpha1 = alpha[1:(length(alpha)/2)]
         alpha2 = alpha[(length(alpha)/2 +1):length(alpha)]
 
@@ -101,10 +101,10 @@ make_empirical_Delta_RL = function(tab,J){
 
       function(psi) {
 
-        # Transforming phi to return to probabilities (no sum-to-one constraint)
+        # Transforming psi to return to probabilities (no sum-to-one constraint)
         alpha = exp(psi)/(1+exp(psi))
 
-        # Splitting phi into components associated with Y1 and Y2
+        # Splitting psi into components associated with Y1 and Y2
         alpha1 = alpha[1:(length(alpha)/2)]
         alpha2 = alpha[(length(alpha)/2 +1):length(alpha)]
 
