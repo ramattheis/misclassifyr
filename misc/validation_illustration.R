@@ -48,3 +48,36 @@ beta_mle = Pi_to_beta(
   cov_Pi = mcout_emp$cov_Pi_mle
 )
 
+
+
+tab = tab_ABE$tab
+J = tab_ABE$J
+K = tab_ABE$J
+X_names = tab_ABE$X_names
+Y1_names = tab_ABE$Y1_names
+Y2_names = tab_ABE$Y2_names
+W_names = tab_ABE$W_names
+makeplots = T
+misclassification_size = 0.2
+X_vals = NA
+Y_vals = NA
+mle = T
+optim_tol = 1e-8
+optim_maxit = 1e5
+check_stability = F
+stability_sd = 0.1
+bayesian = F
+n_mcmc_draws = 1e4
+n_burnin = 5e3
+thinning_rate = 1
+gibbs_proposal_sd = 0.1
+model_to_Pi = model_to_Pi_NP
+model_to_Delta = Delta_info$model_to_Delta
+log_prior_Pi = log_prior_Pi_NP
+log_prior_Delta = Delta_info$log_prior_Delta
+phi_0 = NA
+psi_0 = Delta_info$psi_0
+X_col_name = "Years of Education"
+Y_col_name = "Wages"
+cores = 3
+

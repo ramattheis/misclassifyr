@@ -854,7 +854,7 @@ misclassifyr <- function(
 
 
 
-   #------------------------------------------------------------
+  #------------------------------------------------------------
   # Generating Pi and Delta figures
   #------------------------------------------------------------
 
@@ -862,11 +862,11 @@ misclassifyr <- function(
 
     if(makeplots){ # Should plots be generated?
 
-      if(class(misclassification_output$Pi_hat_mle) == "list"){ # Aggregating across lists of Pi_hat and Delta_hat
+      if(class(misclassification_output$Pi_hat_mle) == "list"){
+        # Aggregating across lists of Pi_hat and Delta_hat
 
         # If the dimension of Pi is inconsistent across covariate cells, not plotting
-        if(length(unique(paste(unlist(misclassification_output$J),
-                               unlist(misclassification_output$K)))) == 1){
+        if(length(unique(paste(unlist(J), unlist(K)))) == 1){
 
           # Normalizing the weight of each cell
           W_weights = unlist(misclassification_output$W_weight)
@@ -970,17 +970,14 @@ misclassifyr <- function(
                          axis.title = ggplot2::element_text(size = 12))
       }
 
-
     } else {
       Pi_hat_mle_plot = NA
       Delta_hat_mle_plot = NA
     }
 
   } else {
-
     Pi_hat_mle_plot = NA
     Delta_hat_mle_plot = NA
-
   }
 
   if(bayesian){ # Are there Bayesian estimates?
