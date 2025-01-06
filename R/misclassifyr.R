@@ -101,8 +101,8 @@ misclassifyr <- function(
   if(n_burnin < 5000){ warning("`n_burnin` is too small. Choose a value of at least 5000.")}
 
   # Throwing an error if the relative size of n_mcmc_draws/ n_burnin
-  if(n_mcmc_draws - n_burnin < 1000){ stop("`n_burnin` is too close to `n_mcmc_draws`. Choose a smaller `n_burnin` or a larger `n_mcmc_draws`.")}
-  if((n_mcmc_draws - n_burnin)/thinning_rate < 1000){ stop("`thinning_rate` is too large. Choose a smaller `n_thinning_rate` or a larger gap between `n_burnin` and `n_mcmc_draws`.")}
+  if(n_mcmc_draws - n_burnin < 1000){ warning("`n_burnin` is too close to `n_mcmc_draws`. Choose a smaller `n_burnin` or a larger `n_mcmc_draws`.")}
+  if((n_mcmc_draws - n_burnin)/thinning_rate < 1000){ warning("`thinning_rate` is too large. Choose a smaller `n_thinning_rate` or a larger gap between `n_burnin` and `n_mcmc_draws`.")}
 
   #-----------------------------
   # Recording the types of each object
@@ -112,6 +112,8 @@ misclassifyr <- function(
                   class(K),
                   class(model_to_Pi),
                   class(model_to_Delta),
+                  class(log_prior_Pi),
+                  class(log_prior_Delta),
                   class(phi_0),
                   class(psi_0),
                   class(X_names),
@@ -129,6 +131,8 @@ misclassifyr <- function(
     "K",
     "model_to_Pi",
     "model_to_Delta",
+    "log_prior_Pi",
+    "log_prior_Delta",
     "phi_0",
     "psi_0",
     "X_names",
@@ -180,6 +184,8 @@ misclassifyr <- function(
       K = K[[j]],
       model_to_Pi = model_to_Pi[[j]],
       model_to_Delta = model_to_Delta[[j]],
+      log_prior_Pi = log_prior_Pi[[j]],
+      log_prior_Delta = log_prior_Delta[[j]],
       phi_0 = phi_0[[j]],
       psi_0 = psi_0[[j]],
       X_names = X_names[[j]],
@@ -198,6 +204,8 @@ misclassifyr <- function(
       K = K,
       model_to_Pi = model_to_Pi,
       model_to_Delta = model_to_Delta,
+      log_prior_Pi = log_prior_Pi,
+      log_prior_Delta = log_prior_Delta,
       phi_0 = phi_0,
       psi_0 = psi_0,
       X_names = X_names,
@@ -224,6 +232,8 @@ misclassifyr <- function(
     K = misclassification_input$K
     model_to_Pi = misclassification_input$model_to_Pi
     model_to_Delta = misclassification_input$model_to_Delta
+    log_prior_Pi = misclassification_input$log_prior_Pi
+    log_prior_Delta = misclassification_input$log_prior_Delta
     phi_0 = misclassification_input$phi_0
     psi_0 = misclassification_input$psi_0
     X_names = misclassification_input$X_names
@@ -500,8 +510,8 @@ misclassifyr <- function(
       optim_counts = NA
       model_to_Pi_jacobian = NA
       eta_hessian_mle = NA
-      fisher_info_err = NA
-      inconsistency_mle = NA
+      fisher_info_err = "Not generated"
+      inconsistency_mle = "Not generated"
     }
 
     #------------------------------------------------------------
@@ -869,7 +879,7 @@ misclassifyr <- function(
         if(length(unique(paste(unlist(J), unlist(K)))) == 1){
 
           # Normalizing the weight of each cell
-          W_weights = unlist(misclassification_output$W_weight)
+          W_weights = unlist(misclassification_output$W_weights)
           W_weights = W_weights / sum(W_weights)
 
           # Averaging Pi across covariate cells

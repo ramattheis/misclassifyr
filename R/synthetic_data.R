@@ -95,6 +95,21 @@ synthetic_data = function(J=5,
 
     }
 
+
+    if(dgp_delta == "No error"){
+
+      # Deltas are diagonals
+      delta1 = diag(J)
+      delta2 = diag(J)
+
+      # Building the joint distribution Y1, Y2 conditional on Y*
+      delta = lapply(1:ncol(delta2), function(j) diag(delta2[j,]) %*% t(delta1))
+      delta = do.call(cbind, delta)
+
+    }
+
+
+
     #------------------------------------------------------------
     # Drawing the data conditional on Pi and Delta
     #------------------------------------------------------------

@@ -18,7 +18,6 @@ tab_ABE = prep_misclassification_data(
   round_vals = 0
 )
 
-
 Delta_info = make_empirical_Delta_RL_common_alpha_mixed_NP(tab_ABE$tab, tab_ABE$J)
 
 mcout_emp = misclassifyr(
@@ -33,8 +32,14 @@ mcout_emp = misclassifyr(
   model_to_Delta = Delta_info$model_to_Delta,
   phi_0 = NA,
   psi_0 = Delta_info$psi_0,
+  mle = F,
+  bayesian = T,
+  log_prior_Pi = log_prior_Pi_NP,
+  log_prior_Delta = Delta_info$log_prior_Delta,
   X_col_name = "Years of Education",
   Y_col_name = "Wages",
+  n_mcmc_draws = 101,
+  n_burnin = 1,
   cores = 3
 )
 
@@ -49,7 +54,6 @@ beta_mle = Pi_to_beta(
 )
 
 
-
 tab = tab_ABE$tab
 J = tab_ABE$J
 K = tab_ABE$J
@@ -61,14 +65,14 @@ makeplots = T
 misclassification_size = 0.2
 X_vals = NA
 Y_vals = NA
-mle = T
+mle = F
 optim_tol = 1e-8
 optim_maxit = 1e5
 check_stability = F
 stability_sd = 0.1
-bayesian = F
-n_mcmc_draws = 1e4
-n_burnin = 5e3
+bayesian = T
+n_mcmc_draws = 1e3
+n_burnin = 5e2
 thinning_rate = 1
 gibbs_proposal_sd = 0.1
 model_to_Pi = model_to_Pi_NP
