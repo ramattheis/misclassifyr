@@ -4,7 +4,7 @@
 #' @param K An integer indicating the dimension of X.
 #' @param I An integer indicating the dimension of W.
 #' @param sample_size An integer denoting the number of synthetic observations.
-#' @param dgp_delta A character string indicating the data generating process for the synthetic noise
+#' @param dgp_delta A character string indicating the data generating process for the synthetic noise, options include, "Nonparametric, independent, strong diagonal", "Record Linkage, independent, 10 - 30%" and ,"No error"
 #' @param dgp_pi A character string indicating the data generating process for the joint distribution of X and Y*
 #' @return A list including tabulated data `tab` and matrices `Pi`, `Delta`
 #' @keywords internal
