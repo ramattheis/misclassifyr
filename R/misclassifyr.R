@@ -75,7 +75,6 @@ misclassifyr <- function(
 
   #------------------------------------------------------------
   # Catching errors in some variables
-  # other input errors caught in MisclassMLE()
   #------------------------------------------------------------
 
   if(class(bayesian) != "logical"){stop("`bayesian` should be TRUE or FALSE.")}
@@ -173,7 +172,7 @@ misclassifyr <- function(
 
 
   #-----------------------------
-  # Converting inputs to a list (or list of lists)  for estimate_misclassification
+  # Converting inputs to a list (or list of lists)
   #-----------------------------
 
   if(class(tab) == "list"){
@@ -1090,15 +1089,12 @@ misclassifyr <- function(
         posterior_Pi_mean_plot_df$Y_name = factor(posterior_Pi_mean_plot_df$Y_name, levels = Y1_names)
 
         # Finding posterior mean Delta and marginalizing across Y2
-        posterior_Delta_mean_plot_df = lapply(
-          misclassification_output$posterior_Delta,
-          function(Delta_draws) Delta_draws |>
-            dplyr::group_by(Ys_name, Y1_name, draw) |>
-            dplyr::summarise(Delta_hat = sum(Delta_hat), .groups = "drop")) |>
-            dplyr::group_by(Ys_name, Y1_name) |>
-            dplyr::summarise(Delta_hat = mean(Delta_hat),
-                             .groups = "drop") |>
-            as.data.frame()
+        posterior_Delta_mean_plot_df = misclassification_output$posterior_Delta |>
+          dplyr::group_by(Ys_name, Y1_name, draw) |>
+          dplyr::summarise(Delta_hat = sum(Delta_hat), .groups = "drop") |>
+          dplyr::group_by(Ys_name, Y1_name) |>
+          dplyr::summarise(Delta_hat = mean(Delta_hat), .groups = "drop") |>
+          as.data.frame()
 
         # Converting Y1 and Ys to factors
         posterior_Delta_mean_plot_df$Y1_name = factor(posterior_Delta_mean_plot_df$Y1_name, levels = Y1_names)

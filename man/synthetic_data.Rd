@@ -22,7 +22,7 @@ synthetic_data(
 
 \item{sample_size}{An integer denoting the number of synthetic observations.}
 
-\item{dgp_delta}{A character string indicating the data generating process for the synthetic noise}
+\item{dgp_delta}{A character string indicating the data generating process for the synthetic noise, options include, "Nonparametric, independent, strong diagonal", "Record Linkage, independent, 10 - 30\%" and ,"No error"}
 
 \item{dgp_pi}{A character string indicating the data generating process for the joint distribution of X and Y*}
 }
