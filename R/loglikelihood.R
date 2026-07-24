@@ -24,8 +24,16 @@ loglikelihood = function(theta,tab,J,K,lambda_dd){
                    (floor((i-1)/J)*J+1):(floor((i-1)/J+1)*J)] -
              Delta[ifelse(i>=J & i%%J==0,J,i%%J),i])^2))
 
-  # Computing the log likelihood
-  llsum = sum(tab$n * softlog(c(t(Pi) %*% Delta)))
+  # Computing the log likelihood. Zero-count cells contribute nothing to the
+  # sum, so a sparse tab (only observed cells, with `cell_idx` giving each
+  # cell's position in the balanced (Y2,Y1,X)-ordered layout) gives the
+  # identical value while its tabulation stays O(observed cells).
+  if(!is.null(tab$cell_idx)){
+    p_full = c(t(Pi) %*% Delta)
+    llsum = sum(tab$n * softlog(p_full[tab$cell_idx]))
+  } else {
+    llsum = sum(tab$n * softlog(c(t(Pi) %*% Delta)))
+  }
 
   return(llsum + penalty_dd)
 

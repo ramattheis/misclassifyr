@@ -18,6 +18,7 @@
 #' @param Y2_names A vector of character strings denoting the values of the instrument in the desired order. If NA, as is default, names will be inferred from the data.
 #' @param record_vals A logical value indicating whether to record the unique values of the outcomes and the regressor. If record_vals = F, you likely want to order the data by the regressor and outcomes before applying prep_misclassification_data.
 #' @param round_vals An integer indicating the precision with which to round the names associated with values of the regressor, outcome, and instrument. Default is 2.
+#' @param sparse A logical value. If TRUE, the returned tabulation keeps only observed (positive-count) cells and adds a `cell_idx` column giving each cell's position in the balanced (Y2, Y1, X)-ordered layout. Use for high-dimensional outcomes where the balanced table (J^2 x K rows) is impractically large; misclassifyr() accepts either form and returns identical estimates.
 #' @return A list of objects including tabulated data to be used in misclassifyr()
 #' @export
 prep_misclassification_data <- function(
@@ -34,7 +35,8 @@ prep_misclassification_data <- function(
     Y1_names = NA,
     Y2_names = NA,
     record_vals = F,
-    round_vals = 2) {
+    round_vals = 2,
+    sparse = FALSE) {
 
   #------------------------------------------------------------
   # Catching input errors
@@ -229,6 +231,16 @@ prep_misclassification_data <- function(
       dplyr::summarise(n = sum(weight),.groups = "drop") |>
       dplyr::arrange(Y2,Y1,X) |>
       as.data.frame()
+
+    # Sparse mode: record each cell's position in the balanced ordered
+    # layout, then drop the zero-count rows. misclassifyr()'s likelihood is
+    # unchanged by the dropped cells (they contribute zero terms) and uses
+    # `cell_idx` to align observed cells with the model's probability vector.
+    if(sparse){
+      tab$cell_idx = seq_len(nrow(tab))
+      tab = tab[tab$n > 0, , drop = FALSE]
+      rownames(tab) = NULL
+    }
 
     # Returning tabulations, names, and values
     return(list(

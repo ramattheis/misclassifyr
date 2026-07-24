@@ -27,6 +27,7 @@ misclassifyr(
   optim_maxit = 1e+05,
   check_stability = F,
   stability_sd = 0.1,
+  lambda_dd = NULL,
   bayesian = F,
   log_prior_Pi = log_prior_Pi_NP,
   log_prior_Delta = log_prior_Delta_NP_ind,
@@ -81,6 +82,8 @@ misclassifyr(
 \item{check_stability}{A logical value indicating whether to perform a more rigorous stability test for the numerical optimizer.}
 
 \item{stability_sd}{A numerical value giving the standard deviation of the noise added to the initial parameter value for the stability test of the MLE.}
+
+\item{lambda_dd}{A non-negative numeric weight on the penalty for violations of diagonal dominance in Delta. Defaults to \code{sum(tab$n)^2} (a near-hard constraint); set to smaller values (or 0) to weaken or remove the penalty.}
 
 \item{bayesian}{A logical value indicating whether or not to compute the posterior of values.}
 

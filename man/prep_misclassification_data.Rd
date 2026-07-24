@@ -18,7 +18,8 @@ prep_misclassification_data(
   Y1_names = NA,
   Y2_names = NA,
   record_vals = F,
-  round_vals = 2
+  round_vals = 2,
+  sparse = FALSE
 )
 }
 \arguments{
@@ -49,6 +50,8 @@ prep_misclassification_data(
 \item{record_vals}{A logical value indicating whether to record the unique values of the outcomes and the regressor. If record_vals = F, you likely want to order the data by the regressor and outcomes before applying prep_misclassification_data.}
 
 \item{round_vals}{An integer indicating the precision with which to round the names associated with values of the regressor, outcome, and instrument. Default is 2.}
+
+\item{sparse}{A logical value. If TRUE, the returned tabulation keeps only observed (positive-count) cells and adds a \code{cell_idx} column giving each cell's position in the balanced (Y2, Y1, X)-ordered layout. Use for high-dimensional outcomes where the balanced table (J^2 x K rows) is impractically large; misclassifyr() accepts either form and returns identical estimates.}
 }
 \value{
 A list of objects including tabulated data to be used in misclassifyr()

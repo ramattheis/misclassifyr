@@ -30,6 +30,7 @@
 #' @param optim_maxit An integer giving the maximum number of iterations for optim.
 #' @param check_stability A logical value indicating whether to perform a more rigorous stability test for the numerical optimizer.
 #' @param stability_sd A numerical value giving the standard deviation of the noise added to the initial parameter value for the stability test of the MLE.
+#' @param lambda_dd A non-negative numeric weight on the penalty for violations of diagonal dominance in Delta. Defaults to `sum(tab$n)^2` (a near-hard constraint); set to smaller values (or 0) to weaken or remove the penalty.
 #' @param bayesian A logical value indicating whether or not to compute the posterior of values.
 #' @param log_prior_Pi A function or list of functions evaluating the log of the prior of Pi at `phi` (in logs!).
 #' @param log_prior_Delta A function or list of functions evaluating the log of the prior of Delta at `psi` (in logs!).
@@ -64,6 +65,7 @@ misclassifyr <- function(
     optim_maxit = 1e5,
     check_stability = F,
     stability_sd = 0.1,
+    lambda_dd = NULL,
     bayesian = F,
     log_prior_Pi = log_prior_Pi_NP,
     log_prior_Delta = log_prior_Delta_NP_ind,
@@ -275,8 +277,16 @@ misclassifyr <- function(
     if(identical(psi_0, NA) & identical(attr(model_to_Delta,"name"),NULL)){
       stop("`psi_0` must be defined if `model_to_Delta` is user-defined.")
     }
-    # Throwing an error if tab is not balanced
-    if( any(duplicated(tab[,c("X","Y1","Y2")])) | nrow(tab) != J^2*K){
+    # Throwing an error if tab is not balanced (dense) or malformed (sparse).
+    # A sparse tab (from prep_misclassification_data(..., sparse = TRUE))
+    # carries a `cell_idx` column giving each observed cell's position in
+    # the balanced (Y2, Y1, X)-ordered layout; zero-count cells are omitted.
+    if(!is.null(tab$cell_idx)){
+      if(any(duplicated(tab$cell_idx)) || min(tab$cell_idx) < 1 ||
+         max(tab$cell_idx) > J^2*K){
+        stop("sparse `tab` appears malformed: `cell_idx` must be unique values in 1..J^2*K.")
+      }
+    } else if( any(duplicated(tab[,c("X","Y1","Y2")])) | nrow(tab) != J^2*K){
       stop("`tab` appears not to be balanced across X, Y1, and Y2.")
     }
     # Throwing an error if model_to_Pi doesn't accept additional arguments
@@ -294,8 +304,13 @@ misclassifyr <- function(
       tab$Y2 = factor(tab$Y2, levels = Y2_names)
     }
 
-    # Ensuring tab has the correct order
-    tab = tab[order(tab$Y2,tab$Y1,tab$X),]
+    # Ensuring tab has the correct order (sparse tabs order by their
+    # precomputed position in the balanced layout)
+    if(!is.null(tab$cell_idx)){
+      tab = tab[order(tab$cell_idx),]
+    } else {
+      tab = tab[order(tab$Y2,tab$Y1,tab$X),]
+    }
 
     #------------------------------------------------------------
     # Setting the starting location for optimization and/or MCMC
@@ -303,17 +318,24 @@ misclassifyr <- function(
 
     if(identical(phi_0,NA)){
       if(identical(attr(model_to_Pi,"name"),"model_to_Pi_NP")){
-        # Default starting location for phi_0 is the empirical distribution of X and Y1
-        tab_xy = tab |>
-          dplyr::group_by(X,Y1) |>
-          dplyr::summarise(n = sum(n),.groups = "drop") |>
-          as.data.frame()
-        tab_xy = tab_xy[order(tab_xy$Y1, tab_xy$X),]
-        tab_xy$p = tab_xy$n/sum(tab_xy$n)
-        phi_0 = softlog(tab_xy$p[1:(J*K-1)] / max(tab_xy$p[J*K], 1e-6))
-        rm(tab_xy)
-        ## Default starting location for phi_0 is flat
-        #phi_0 = softlog(rep(1/(J*K), J*K-1 )/(1/(J*K)) )
+        # Default starting location for phi_0 is the (shrunken) empirical
+        # distribution of X and Y1, reconstructed on the dense J*K grid so
+        # that sparse tabs and empty cells are handled: adding half a count
+        # per cell keeps empty (and empty reference) cells off the logit
+        # boundary, where the old construction started at ~-46.
+        xi = match(as.character(tab$X), as.character(X_names))
+        y1 = match(as.character(tab$Y1), as.character(Y1_names))
+        if(any(is.na(xi)) || any(is.na(y1))){
+          # Fall back to rank coding when names don't match the raw values
+          xi = match(tab$X,  sort(unique(tab$X)))
+          y1 = match(tab$Y1, sort(unique(tab$Y1)))
+        }
+        n_xy = numeric(J*K)
+        agg = tapply(tab$n, (y1 - 1)*K + xi, sum)
+        n_xy[as.integer(names(agg))] = agg
+        p = (n_xy + 0.5) / sum(n_xy + 0.5)
+        phi_0 = softlog(p[1:(J*K-1)] / p[J*K])
+        rm(list = c("xi","y1","n_xy","agg","p"))
       }
     }
 
@@ -366,8 +388,9 @@ misclassifyr <- function(
     # Defining the objective function for estimation
     #------------------------------------------------------------
 
-    # Setting the penalty for violations of diagonal dominance
-    lambda_dd = sum(tab$n)^2
+    # Setting the penalty for violations of diagonal dominance (default:
+    # a near-hard constraint scaling with the squared sample size)
+    if(is.null(lambda_dd)){ lambda_dd = sum(tab$n)^2 }
 
     # Defining the objective function
     objective = function(eta){
@@ -810,6 +833,7 @@ misclassifyr <- function(
 
     # Exporting common objects to workers
     common_objects = c("estimate_misclassification", "makeplots","mle","optim_maxit","optim_tol","check_stability","stability_sd",
+                       "lambda_dd",
                        "bayesian","n_mcmc_draws", "n_burnin","thinning_rate", "gibbs_proposal_sd",
                        "log_prior_Pi", "log_prior_Delta")
     for (obj in common_objects) { # exporting workers from the local environment one by one
