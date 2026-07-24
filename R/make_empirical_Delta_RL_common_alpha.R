@@ -9,7 +9,7 @@ make_empirical_Delta_RL_common_alpha = function(tab){
   # Constructing functions for model_to_Delta for each cell
   #------------------------------------------------------------
 
-  if(class(tab) == "list"){
+  if(is_cell_list(tab)){
 
     # Computing the empirical frequency of Y1 and Y2 within covariate cells
     FY1s = lapply(tab, function(tb) {
@@ -75,7 +75,6 @@ make_empirical_Delta_RL_common_alpha = function(tab){
       dplyr::group_by(Y2) |>
       dplyr::summarise( n = sum(n)) |>
       as.data.frame()
-    tabY2$n / sum(tabY2$n)
     FY2 = tabY2$n / sum(tabY2$n)
 
     model_to_Delta <- local({
@@ -90,8 +89,8 @@ make_empirical_Delta_RL_common_alpha = function(tab){
         alpha2 = alpha[2]
 
         # Computing the misclassification error distribution
-        Delta1 = diag(rep(1-alpha1,length(FY1))) + FY1 %*% t(rep(1-alpha1,length(FY1)))
-        Delta2 = diag(rep(1-alpha2,length(FY2))) + FY2 %*% t(rep(1-alpha2,length(FY2)))
+        Delta1 = diag(rep(1-alpha1,length(FY1))) + FY1 %*% t(rep(alpha1,length(FY1)))
+        Delta2 = diag(rep(1-alpha2,length(FY2))) + FY2 %*% t(rep(alpha2,length(FY2)))
         Delta = lapply(1:nrow(Delta2), function(j) diag(Delta2[j,]) %*% t(Delta1))
         Delta = do.call(cbind, Delta)
 
@@ -106,7 +105,7 @@ make_empirical_Delta_RL_common_alpha = function(tab){
   # Defining the initial value of psi_0
   #------------------------------------------------------------
 
-  if(class(tab) == "list"){
+  if(is_cell_list(tab)){
     psi_0 = lapply(seq_along(tab), function(i) rep(-2,2))
   } else {
     psi_0 = rep(-2,2)
@@ -116,10 +115,10 @@ make_empirical_Delta_RL_common_alpha = function(tab){
   # Defining the prior
   #------------------------------------------------------------
 
-  if(class(tab) == "list"){
+  if(is_cell_list(tab)){
     log_prior_Delta = replicate(length(tab), function(psi) sum(dlogis(psi, log = T)) )
   } else {
-    log_prior_Delta = function(psi){ retun(sum(dlogis(psi, log=T))) }
+    log_prior_Delta = function(psi){ return(sum(dlogis(psi, log=T))) }
   }
 
   #------------------------------------------------------------

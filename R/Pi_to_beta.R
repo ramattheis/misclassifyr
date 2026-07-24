@@ -10,6 +10,8 @@
 #' @param bayesian Logical value indicating whether posterior draws of \eqn{\Pi} have been provided. Defaults to `FALSE`.
 #' @param Pi_mle A numeric vector or list of numeric vectors containing the elements of Pi.
 #' @param cov_Pi A numeric vector or a list of numeric vectors representing the covariance of estimates of the elements of Pi.
+#' @param posterior_Pi A data frame of posterior draws of Pi (or a list of such data frames split by control cell), as returned in `$posterior_Pi` by `misclassifyr(bayesian = TRUE)`.
+#' @param ll_history A data frame with columns `ll` and `draw` (or a list of such data frames split by control cell), as returned in `$ll_history` by `misclassifyr(bayesian = TRUE)`. Required for the Chen-Christensen-Tamer HPD confidence set; if omitted, `HPD_draws` and `HPDCI` are returned as `NA`.
 #' @export
 Pi_to_beta = function(
     X_vals,
@@ -20,7 +22,8 @@ Pi_to_beta = function(
     bayesian = F,
     Pi_mle = NA,
     cov_Pi = NA,
-    posterior_Pi = NA
+    posterior_Pi = NA,
+    ll_history = NA
     ){
 
   #------------------------------------------------------------
@@ -33,24 +36,34 @@ Pi_to_beta = function(
       stop("If `mle == TRUE`, `Pi_mle` and `cov_Pi` should be provided.")
     }
     # Throwing an error if not all objects are lists / all objects are not lists
-    if(bayesian & (class(Pi_mle) != class(posterior_Pi) |
-                   length(Pi_mle) != length(posterior_Pi)) &
-       (class(Pi_mle) == "list" | class(posterior_Pi) == "list")){
+    if(bayesian && (is_cell_list(Pi_mle) || is_cell_list(posterior_Pi)) &&
+       (!(is_cell_list(Pi_mle) && is_cell_list(posterior_Pi)) ||
+        length(Pi_mle) != length(posterior_Pi))){
       stop("If `Pi_mle` or `posterior_Pi` is a list, both should be lists of the same length.  ")
     }
     # Throwing an error if W_weights is not provided
-    if(class(Pi_mle) == "list" & identical(W_weights, NA)){
+    if(is_cell_list(Pi_mle) & identical(W_weights, NA)){
       stop("If `Pi_mle` is a list, `W_weights` should be provided.")
     }
   }
 
   if(bayesian){
+    if(is.null(ll_history)){ ll_history = NA }
     if(identical(posterior_Pi, NA)){
       stop("If `bayesian == TRUE`, `posterior_Pi` should be provided.")
     }
     # Throwing an error if W_weights is not provided
-    if(class(posterior_Pi) == "list" & identical(W_weights, NA)){
+    if(is_cell_list(posterior_Pi) & identical(W_weights, NA)){
       stop("If `posterior_Pi` is a list, `W_weights` should be provided.")
+    }
+    # Throwing an error if ll_history's structure doesn't match posterior_Pi
+    if(!identical(ll_history, NA)){
+      if(is_cell_list(posterior_Pi) != is_cell_list(ll_history)){
+        stop("`ll_history` should have the same structure as `posterior_Pi` (both single data frames, or both lists split by control cell).")
+      }
+      if(is_cell_list(ll_history) && length(ll_history) != length(posterior_Pi)){
+        stop("`ll_history` and `posterior_Pi` should be lists of the same length.")
+      }
     }
   }
 
@@ -85,7 +98,7 @@ Pi_to_beta = function(
     names(se_beta_mle) = "SE for MLE beta"
 
     # If controls are used, returning a list of betas within each cell
-    if(class(Pi_mle) == "list"){
+    if(is_cell_list(Pi_mle)){
 
       # Estimating beta within each control cell
       betas_hat_mle = sapply(seq_along(W_names), function(j)
@@ -119,17 +132,20 @@ Pi_to_beta = function(
   if(bayesian){
 
     # Aggregating across control cells
-    if(class(tab) == "list"){
+    if(is_cell_list(posterior_Pi)){
 
       # Extracting W_weights and normalizing
       W_weights = unlist(W_weights)
       W_weights = W_weights/sum(W_weights)
 
+      # The posterior draw index (common across control cells)
+      draws = unique(posterior_Pi[[1]]$draw)
+
       # Defining a quick function to aggregate the posterior across control cells
       posterior_agg = function(d){
         # Grabbing the dth draw of the posterior
         posterior_df_list = lapply(seq_along(W_names), function(w)
-          subset(misclassification_output$posterior_Pi[[w]], draw == d))
+          subset(posterior_Pi[[w]], draw == d))
 
         # Scaling weights to reflect control cell size
         posterior_df_list = Map(function(post_df, W_weight) {
@@ -143,40 +159,48 @@ Pi_to_beta = function(
         return(posterior_df)
       }
 
-      posterior_beta = sapply(unique(misclassification_output$posterior_Pi[[1]]$draw), function(d)
+      posterior_beta = sapply(draws, function(d){
+        posterior_df = posterior_agg(d)
         lm(Y_val ~ X_val,
-           data = posterior_agg(d),
-           weight = posterior_agg(d)$Pi_hat
-        )$coefficients[2] |> unname())
-
+           data = posterior_df,
+           weight = posterior_df$Pi_hat
+        )$coefficients[2] |> unname()
+      })
 
       # Recording the posterior of beta within covariate cells
       posterior_betas = lapply(seq_along(W_names), function(j)
-        sapply(unique(misclassification_output$posterior_Pi[[j]]$draw ), function(d)
+        sapply(unique(posterior_Pi[[j]]$draw), function(d){
+          posterior_df = subset(posterior_Pi[[j]], draw == d)
           lm(Y_val ~ X_val,
-             data = subset(misclassification_output$posterior_Pi[[j]], draw == d),
-             weight = subset(misclassification_output$posterior_Pi[[j]], draw == d)$Pi_hat
+             data = posterior_df,
+             weight = posterior_df$Pi_hat
           )$coefficients[2] |> unname()
-        )
+        })
       )
       names(posterior_betas) = W_names
 
-      # Computing Chen, Christensen, and Tamer Partial ID-robust CI
+      # Computing Chen, Christensen, and Tamer partial-ID-robust CI
+      # (requires the MCMC likelihood history)
+      if(!identical(ll_history, NA)){
 
-      # Summing the likelihood history across covariate cells
-      ll_history = sapply(unique(misclassification_output$posterior_Pi[[1]]$draw), function(d) {
-        # For each draw 'd', loop over all control cells 'w' and sum the likelihood
-        sum(sapply(seq_along(W_names), function(w) {
-          # Subset the ll_history for the current control cell 'w' and draw 'd'
-          subset(misclassification_output$ll_history[[w]], draw == d)$ll
-        }))
-      })
+        # Summing the likelihood history across covariate cells
+        ll_draws = sapply(draws, function(d) {
+          sum(sapply(seq_along(W_names), function(w) {
+            subset(ll_history[[w]], draw == d)$ll
+          }))
+        })
 
-      # sort ll_history to find top 95%
-      ll_sorted = sort(ll_history, decreasing = F)
-      ll_critical = ll_sorted[floor(length(ll_sorted)*0.05) ]
-      HPD_draws = unique(misclassification_output$posterior_Pi[[1]]$draw[ll_history > ll_critical])
-      HPDCI = c(min(posterior_beta[ll_history > ll_critical]), max(posterior_beta[ll_history > ll_critical]) )
+        # sort to find top 95% (with fewer than 20 draws the 5% cutoff index
+        # is 0, so clamp to the minimum: all draws are kept)
+        ll_sorted = sort(ll_draws, decreasing = F)
+        ll_critical = ll_sorted[max(1, floor(length(ll_sorted)*0.05))]
+        HPD_draws = draws[ll_draws >= ll_critical]
+        HPDCI = c(min(posterior_beta[ll_draws >= ll_critical]),
+                  max(posterior_beta[ll_draws >= ll_critical]))
+      } else {
+        HPD_draws = NA
+        HPDCI = NA
+      }
 
       # Extracting the median and the sd
       posterior_beta_med = median(posterior_beta)
@@ -186,27 +210,38 @@ Pi_to_beta = function(
 
     } else {
 
+      # The posterior draw index
+      draws = unique(posterior_Pi$draw)
+
       # Estimating beta for each draw of the posterior
-      posterior_beta = sapply(unique(misclassification_output$posterior_Pi$draw ), function(d)
+      posterior_beta = sapply(draws, function(d){
+        posterior_df = subset(posterior_Pi, draw == d)
         lm(Y_val ~ X_val,
-           data = subset(misclassification_output$posterior_Pi, draw == d),
-           weight = subset(misclassification_output$posterior_Pi, draw == d)$Pi_hat
+           data = posterior_df,
+           weight = posterior_df$Pi_hat
         )$coefficients[2] |> unname()
-      )
-
-      # Computing Chen, Christensen, and Tamer Partial ID-robust CI
-
-      # Summing the likelihood history across covariate cells
-      ll_history = sapply(unique(misclassification_output$posterior_Pi$draw), function(d) {
-        # For each draw 'd' sum the likelihood
-        sum(subset(misclassification_output$ll_history, draw == d)$ll)
       })
 
-      # sort ll_history to find top 95%
-      ll_sorted = sort(ll_history, decreasing = F)
-      ll_critical = ll_sorted[floor(length(ll_sorted)*0.05) ]
-      HPD_draws = unique(misclassification_output$posterior_Pi$draw[ll_history > ll_critical])
-      HPDCI = c(min(posterior_beta[ll_history > ll_critical]), max(posterior_beta[ll_history > ll_critical]) )
+      # Computing Chen, Christensen, and Tamer partial-ID-robust CI
+      # (requires the MCMC likelihood history)
+      if(!identical(ll_history, NA)){
+
+        # Summing the likelihood over each draw
+        ll_draws = sapply(draws, function(d) {
+          sum(subset(ll_history, draw == d)$ll)
+        })
+
+        # sort to find top 95% (with fewer than 20 draws the 5% cutoff index
+        # is 0, so clamp to the minimum: all draws are kept)
+        ll_sorted = sort(ll_draws, decreasing = F)
+        ll_critical = ll_sorted[max(1, floor(length(ll_sorted)*0.05))]
+        HPD_draws = draws[ll_draws >= ll_critical]
+        HPDCI = c(min(posterior_beta[ll_draws >= ll_critical]),
+                  max(posterior_beta[ll_draws >= ll_critical]))
+      } else {
+        HPD_draws = NA
+        HPDCI = NA
+      }
 
       # Recording the median and SD
       posterior_beta_med = median(posterior_beta)

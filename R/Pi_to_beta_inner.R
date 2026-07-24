@@ -38,7 +38,7 @@ Pi_to_beta_inner = function(Pi, X_vals, Y_vals, W_weights){
   # Computing and returning beta
   #------------------------------------------------------------
 
-  if(class(Pi) == "list"){
+  if(is_cell_list(Pi)){
 
     # Computing moments within each cell
     moments = do.call(rbind, lapply(seq_along(Pi), function(j) make_moments(Pi[[j]],X_vals[[j]],Y_vals[[j]])))

@@ -10,8 +10,8 @@ make_empirical_Delta_RL_common_alpha_mixed_NP = function(tab,J){
   #------------------------------------------------------------
 
   # If (and only if) tab is a list, J should be a list of the same length
-  if(class(tab) == "list"){
-    if(class(J) == "list"){
+  if(is_cell_list(tab)){
+    if(is_cell_list(J)){
       if(length(J) != length(tab)){
         stop("If `tab` is a list, the list `J` should have the same length.")
       }
@@ -19,7 +19,7 @@ make_empirical_Delta_RL_common_alpha_mixed_NP = function(tab,J){
       stop("If `tab` is a list, `J` should also be a list.")
     }
   } else {
-    if(class(J) == "list"){ stop("`J` should not be a list if `tab` is not a list.") }
+    if(is_cell_list(J)){ stop("`J` should not be a list if `tab` is not a list.") }
   }
 
 
@@ -27,7 +27,7 @@ make_empirical_Delta_RL_common_alpha_mixed_NP = function(tab,J){
   # Constructing functions for model_to_Delta for each cell
   #------------------------------------------------------------
 
-  if(class(tab) == "list"){
+  if(is_cell_list(tab)){
 
     # Computing the empirical frequency of Y1 and Y2 within covariate cells
     FY1s = lapply(tab, function(tb) {
@@ -106,7 +106,7 @@ make_empirical_Delta_RL_common_alpha_mixed_NP = function(tab,J){
   # Defining the initial value of psi_0
   #------------------------------------------------------------
 
-  if(class(tab) == "list"){
+  if(is_cell_list(tab)){
 
     psi_0 = lapply(seq_along(tab), function(i) {
 
@@ -144,7 +144,7 @@ make_empirical_Delta_RL_common_alpha_mixed_NP = function(tab,J){
   # Defining the prior
   #------------------------------------------------------------
 
-  if(class(tab) == "list"){
+  if(is_cell_list(tab)){
     # The prior for the Delta2 portion is can be written as 1/2 the log prior for Delta1, Delta2 in the
     # non-parameteric model assuming independence, since the function is symmertic in the componets of psi
     # associated with Delta1/Delta2, and the log prior is the sum of these two components.

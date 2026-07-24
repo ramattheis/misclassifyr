@@ -13,7 +13,8 @@ Pi_to_beta(
   bayesian = F,
   Pi_mle = NA,
   cov_Pi = NA,
-  posterior_Pi = NA
+  posterior_Pi = NA,
+  ll_history = NA
 )
 }
 \arguments{
@@ -32,6 +33,10 @@ Pi_to_beta(
 \item{Pi_mle}{A numeric vector or list of numeric vectors containing the elements of Pi.}
 
 \item{cov_Pi}{A numeric vector or a list of numeric vectors representing the covariance of estimates of the elements of Pi.}
+
+\item{posterior_Pi}{A data frame of posterior draws of Pi (or a list of such data frames split by control cell), as returned in \verb{$posterior_Pi} by \code{misclassifyr(bayesian = TRUE)}.}
+
+\item{ll_history}{A data frame with columns \code{ll} and \code{draw} (or a list of such data frames split by control cell), as returned in \verb{$ll_history} by \code{misclassifyr(bayesian = TRUE)}. Required for the Chen-Christensen-Tamer HPD confidence set; if omitted, \code{HPD_draws} and \code{HPDCI} are returned as \code{NA}.}
 }
 \description{
 This function computes \eqn{\beta} in the linear regression \eqn{Y^* = \alpha + \beta X + \epsilon} given the joint distribution of \eqn{X} and \eqn{Y^*}, \eqn{\Pi}, and a set of scalars associated with each value of \eqn{X} and \eqn{Y^*}.

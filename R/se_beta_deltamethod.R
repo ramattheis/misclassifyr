@@ -13,7 +13,7 @@
 se_beta_deltamethod = function(Pi, cov_Pi, X_vals, Y_vals, W_weights){
 
   # Is Pi a list?
-  if(class(Pi) == "list"){
+  if(is_cell_list(Pi)){
 
     # Recording the length of the list
     n_control_cells = length(Pi)

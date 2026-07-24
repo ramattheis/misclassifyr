@@ -1,5 +1,5 @@
-# Exact tests for the Pi -> beta mapping (MLE path only; the bayesian = TRUE
-# branch is known-broken and covered by a skipped test in test-known-broken.R).
+# Exact tests for the Pi -> beta mapping (MLE path; the bayesian = TRUE
+# branch is covered in test-known-broken.R, fixed in the A2 pass).
 
 test_that("Pi_to_beta_inner recovers beta exactly for a diagonal Pi", {
   Pi = c(diag(3) / 3)

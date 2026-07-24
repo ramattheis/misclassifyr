@@ -94,6 +94,13 @@ misclassifyr <- function(
   if(!identical(n_burnin%%1,0)){ stop("`n_burnin` should be an integer.") }
   if(!identical(thinning_rate%%1,0)){ stop("`thinning_rate` should be an integer.") }
   if(identical(as.numeric(gibbs_proposal_sd),NA)){ stop("`gibbs_proposal_sd` should be numeric.") }
+  # Posterior draw indices are aligned to the thinned MCMC history; if the
+  # burn-in is not a multiple of the thinning rate the draw keys in
+  # `posterior_Pi` and `ll_history` become disjoint and downstream joins
+  # (e.g. the CCT interval in Pi_to_beta) silently match nothing.
+  if(n_burnin %% thinning_rate != 0){
+    stop("`n_burnin` must be a multiple of `thinning_rate`.")
+  }
 
   # Throwing a warning if n_burnin or n_mcmc_draws is too small
   if(n_mcmc_draws < 10000){ warning("`n_mcmc_draws` is too small. Choose a value of at least 10000.")}
@@ -106,20 +113,14 @@ misclassifyr <- function(
   #-----------------------------
   # Recording the types of each object
   #-----------------------------
-  input_types = c(class(tab),
-                  class(J),
-                  class(K),
-                  class(model_to_Pi),
-                  class(model_to_Delta),
-                  class(log_prior_Pi),
-                  class(log_prior_Delta),
-                  class(phi_0),
-                  class(psi_0),
-                  class(X_names),
-                  class(Y1_names),
-                  class(Y2_names),
-                  class(X_vals),
-                  class(Y_vals)) |>
+  # One row per object, classified with the same predicate used everywhere
+  # else (is_cell_list): the old c(class(...), ...) construction flattened
+  # multi-class vectors (e.g. data.tables), breaking the row count.
+  input_types = sapply(
+    list(tab, J, K, model_to_Pi, model_to_Delta, log_prior_Pi,
+         log_prior_Delta, phi_0, psi_0, X_names, Y1_names, Y2_names,
+         X_vals, Y_vals),
+    function(obj) if(is_cell_list(obj)) "list" else "not list") |>
     as.data.frame()
 
   colnames(input_types) = "type"
@@ -175,7 +176,7 @@ misclassifyr <- function(
   # Converting inputs to a list (or list of lists)
   #-----------------------------
 
-  if(class(tab) == "list"){
+  if(is_cell_list(tab)){
     # rebundling each list as a list of lists
     misclassification_inputs = lapply(seq_along(tab), function(j) list(
       tab = tab[[j]],
@@ -258,12 +259,13 @@ misclassifyr <- function(
     if(!identical(setdiff(c("Y1","Y2","X","n"), colnames(tab)),character(0))){
       stop("`tab` should have four columns: `Y1`, `Y2`, `X`, and `n`.")
     }
-    if( !(class(tab$n) %in% c("double","numeric","integer") ) | min(tab$n) < 0){
-      stop("`n` should take non-negative integer values representing counts (or weighted counts) of unique values of `X`, `Y1`, and `Y2`")
-    }
-    # Throwing an error if `tab` contains NAs
+    # Throwing an error if `tab` contains NAs (checked before the range test
+    # below, which would otherwise fail unhelpfully on min(NA))
     if(any(is.na(tab))){
       stop("`tab` shouldn't contain any NA values")
+    }
+    if( !is.numeric(tab$n) | min(tab$n) < 0){
+      stop("`n` should take non-negative integer values representing counts (or weighted counts) of unique values of `X`, `Y1`, and `Y2`")
     }
 
     # Throwing an error if no starting location is found for user-defined model_to_Pi or model_to_Delta
@@ -553,9 +555,12 @@ misclassifyr <- function(
         # Finding the log posterior likelihood
         ll_proposed = objective(eta_proposed) + prior(eta_proposed)
 
-        # The MH acceptance probability is the difference of the proposed and current
-        # log posterior likelihoods minus the gibbs jump
-        if(log(runif(1)) <  ll_proposed - gibbs.env$ll_current - gibbs_jump){
+        # The MH acceptance probability is the difference of the proposed and
+        # current log posterior likelihoods. The proposal is a symmetric random
+        # walk in the unconstrained eta space, so no Hastings correction is
+        # needed. (A previous version subtracted the jump increment itself,
+        # which is not a valid correction and biased acceptance.)
+        if(log(runif(1)) <  ll_proposed - gibbs.env$ll_current){
           # Accept the proposal
           gibbs.env$eta_current = eta_proposed
           gibbs.env$ll_current = ll_proposed
@@ -795,7 +800,7 @@ misclassifyr <- function(
   #------------------------------------------------------------
 
   # Is there more than one covariate value?
-  if(class(tab)=="list"){
+  if(is_cell_list(tab)){
 
     # Setting up parallel processing
     workers = parallel::makeCluster(cores)
@@ -871,7 +876,7 @@ misclassifyr <- function(
 
     if(makeplots){ # Should plots be generated?
 
-      if(class(misclassification_output$Pi_hat_mle) == "list"){
+      if(is_cell_list(misclassification_output$Pi_hat_mle)){
         # Aggregating across lists of Pi_hat and Delta_hat
 
         # If the dimension of Pi is inconsistent across covariate cells, not plotting
@@ -993,7 +998,7 @@ misclassifyr <- function(
 
     if(makeplots){ # Should plots be generated?
 
-      if(class(misclassification_output$posterior_Pi) == "list"){ # Aggregating across lists of Pi_hat and Delta_hat
+      if(is_cell_list(misclassification_output$posterior_Pi)){ # Aggregating across lists of Pi_hat and Delta_hat
 
         # If the dimension of Pi is inconsistent across covariate cells, not plotting
         if(length(unique(paste(unlist(misclassification_output$J),

@@ -17,7 +17,7 @@ log_prior_Delta_NP_ind = function(psi){
 
   # Computing the log prior in logit space equivalent to a flat prior in probability space
   log_prior_Delta1 = sum(apply(Delta1,2, logit_link_volume))
-  log_prior_Delta2 = sum(apply(Delta1,2, logit_link_volume))
+  log_prior_Delta2 = sum(apply(Delta2,2, logit_link_volume))
 
   return(log_prior_Delta1 + log_prior_Delta2)
 

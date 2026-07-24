@@ -11,8 +11,8 @@ make_empirical_Delta_RL = function(tab,J){
   #------------------------------------------------------------
 
   # If (and only if) tab is a list, J should be a list of the same length
-  if(class(tab) == "list"){
-    if(class(J) == "list"){
+  if(is_cell_list(tab)){
+    if(is_cell_list(J)){
       if(length(J) != length(tab)){
         stop("If `tab` is a list, the list `J` should have the same length.")
       }
@@ -20,7 +20,7 @@ make_empirical_Delta_RL = function(tab,J){
       stop("If `tab` is a list, `J` should also be a list.")
     }
   } else {
-    if(class(J) == "list"){ stop("`J` should not be a list if `tab` is not a list.") }
+    if(is_cell_list(J)){ stop("`J` should not be a list if `tab` is not a list.") }
   }
 
 
@@ -28,7 +28,7 @@ make_empirical_Delta_RL = function(tab,J){
   # Constructing functions for model_to_Delta for each cell
   #------------------------------------------------------------
 
-  if(class(tab) == "list"){
+  if(is_cell_list(tab)){
 
     # Computing the empirical frequency of Y1 and Y2 within covariate cells
     FY1s = lapply(tab, function(tb) {
@@ -125,7 +125,7 @@ make_empirical_Delta_RL = function(tab,J){
   # Defining the initial value of psi_0
   #------------------------------------------------------------
 
-  if(class(tab) == "list"){
+  if(is_cell_list(tab)){
     psi_0 = lapply(seq_along(tab), function(i) rep(-2,2*J[[i]]))
   } else {
     psi_0 = rep(-2,2*J)
@@ -135,7 +135,7 @@ make_empirical_Delta_RL = function(tab,J){
   # Defining the prior
   #------------------------------------------------------------
 
-  if(class(tab) == "list"){
+  if(is_cell_list(tab)){
     log_prior_Delta = replicate(length(tab), function(psi) sum(dlogis(psi, log = T)))
   } else {
     log_prior_Delta = function(psi) {return(sum(dlogis(psi, log = T)))}
