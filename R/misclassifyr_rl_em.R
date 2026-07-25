@@ -35,6 +35,17 @@
 #'   and the fine-geography Pi is then estimated with alpha held fixed to
 #'   avoid the incidental-parameters bias of a free high-dimensional Pi.
 #' @param alpha_0 Numeric starting value for both alpha parameters.
+#' @param T2 Optional sparse "true transition" operator for the SECOND
+#'   measure, as a data.frame with columns `j` (latent category), `l`
+#'   (observed category), `t` (probability), rows summing to one within
+#'   `j`. When supplied, the second measure's model becomes
+#'   \eqn{\Delta^{(2)} = (1-\alpha_2) T + \alpha_2 \mathbf{1}\rho_2^\top}:
+#'   a correct link observes a draw from `T` applied to the latent value
+#'   (e.g. true migration between the two observation dates, disciplined
+#'   by external data such as the 1940 census migration question), while a
+#'   failed link draws from \eqn{\rho_2}. `T2 = NULL` (default) is the
+#'   identity — the plain record-linkage model. `T2` is held fixed (a
+#'   plug-in), not estimated.
 #' @param tol Relative log-likelihood convergence tolerance.
 #' @param maxit Maximum EM iterations.
 #' @param verbose Print the log likelihood every 25 iterations.
@@ -46,6 +57,7 @@ misclassifyr_rl_em = function(tab, J, K,
                               rho1 = NULL, rho2 = NULL,
                               alpha_fixed = NULL,
                               alpha_0 = 0.2,
+                              T2 = NULL,
                               tol = 1e-8, maxit = 500, verbose = FALSE){
 
   #------------------------------------------------------------
@@ -90,6 +102,25 @@ misclassifyr_rl_em = function(tab, J, K,
 
   same = as.numeric(k == l)
 
+  # Optional true-transition operator for measure 2
+  use_T = !is.null(T2)
+  if(use_T){
+    if(!all(c("j","l","t") %in% colnames(T2))) stop("`T2` needs columns `j`, `l`, `t`.")
+    Tj = as.integer(T2$j); Tl = as.integer(T2$l); Tt = as.numeric(T2$t)
+    if(any(Tj < 1) || any(Tj > J) || any(Tl < 1) || any(Tl > J)) stop("`T2` codes must be in 1..J.")
+    rs = rowsum(Tt, Tj)
+    if(any(abs(rs - 1) > 1e-6)) stop("`T2` rows must sum to one within `j`.")
+    Tmat = Matrix::sparseMatrix(i = Tj, j = Tl, x = Tt, dims = c(J, J))
+    # Per-cell lookup T_{l|k} for the both-links-correct term (fixed):
+    t_code = Tj + as.numeric(J)*(Tl - 1)
+    t_kl   = Tt[match(k + as.numeric(J)*(l - 1), t_code)]
+    t_kl[is.na(t_kl)] = 0
+    # Cell codes for extracting m_{l,i} = (T' Pi)_{l,i} each iteration
+    cell_li_code = l + as.numeric(J)*(x - 1)
+  } else {
+    t_kl = same          # T = I: T_{l|k} = 1{k = l}
+  }
+
   #------------------------------------------------------------
   # Initial values
   #------------------------------------------------------------
@@ -124,10 +155,20 @@ misclassifyr_rl_em = function(tab, J, K,
 
     # E-step ---------------------------------------------------
     pplus  = as.numeric(rowsum(p, gS_i))       # Pi_{+,i} over ui
-    pk = p[a_ki]; pl = p[a_li]
-    w11 = (1 - alpha1) * (1 - alpha2) * pk * same
+    pk = p[a_ki]
+    if(use_T){
+      # m_{l,i} = (T' Pi)_{l,i}: the density of observing Y2 = l via a
+      # CORRECT link when the latent is distributed as Pi_{.,i}
+      P  = Matrix::sparseMatrix(i = S_j, j = S_i, x = p, dims = c(J, K))
+      ms = Matrix::summary(Matrix::crossprod(Tmat, P))
+      mv = ms$x[match(cell_li_code, ms$i + as.numeric(J)*(ms$j - 1))]
+      mv[is.na(mv)] = 0
+    } else {
+      mv = p[a_li]
+    }
+    w11 = (1 - alpha1) * (1 - alpha2) * pk * t_kl
     w10 = (1 - alpha1) * alpha2 * rho2[l] * pk
-    w01 = alpha1 * rho1[k] * (1 - alpha2) * pl
+    w01 = alpha1 * rho1[k] * (1 - alpha2) * mv
     w00 = alpha1 * alpha2 * rho1[k] * rho2[l] * pplus[gc_i]
     pc  = w11 + w10 + w01 + w00
     r11 = w11 / pc; r10 = w10 / pc; r01 = w01 / pc; r00 = w00 / pc
@@ -158,8 +199,22 @@ misclassifyr_rl_em = function(tab, J, K,
     }
     # Expected latent-cell counts on the support
     C = numeric(length(s_code))
-    C_tmp = rowsum(c(n * (r11 + r10), n * r01), c(a_ki, a_li))
-    C[as.integer(rownames(C_tmp))] = C_tmp
+    if(use_T){
+      # j = k contributions land at (Y1, X); the one-wrong (r01) mass is
+      # spread over latent predecessors j of l: contribution to (j,i) is
+      # pi_{j,i} * (T B)_{j,i} with B_{l,i} = sum of n*r01/m over cells
+      C_tmp = rowsum(n * (r11 + r10), a_ki)
+      C[as.integer(rownames(C_tmp))] = C_tmp
+      Bmat = Matrix::sparseMatrix(i = l, j = x, x = n * r01 / pmax(mv, 1e-300),
+                                  dims = c(J, K))
+      tb = Matrix::summary(Tmat %*% Bmat)
+      tbv = tb$x[match(s_code, tb$i + as.numeric(J)*(tb$j - 1))]
+      tbv[is.na(tbv)] = 0
+      C = C + p * tbv
+    } else {
+      C_tmp = rowsum(c(n * (r11 + r10), n * r01), c(a_ki, a_li))
+      C[as.integer(rownames(C_tmp))] = C_tmp
+    }
     A_i = as.numeric(rowsum(n * r00, gc_i))    # over positions present in gc_i
     A_full = numeric(length(ui)); A_full[sort(unique(gc_i))] = A_i
     p = (C + A_full[gS_i] * p / pmax(pplus[gS_i], 1e-300)) / N

@@ -75,3 +75,31 @@ test_that("EM with alpha_fixed holds alpha and still recovers Pi", {
   expect_error(misclassifyr_rl_em(d$tab, J = 4, K = 4, alpha_fixed = c(0.2)),
                "length-2")
 })
+
+test_that("EM with T2 separates true transitions from linkage error", {
+  set.seed(31)
+  J = 50; N = 2e5; a1 = 0.10; a2 = 0.15
+  xi = sample.int(J, N, replace = TRUE)
+  jj = ifelse(runif(N) < 0.8, xi, ((xi + sample.int(4, N, replace = TRUE) - 1) %% J) + 1)
+  rho = tabulate(jj, J) / N
+  mv2 = sample.int(3, N, replace = TRUE)
+  l_true = ifelse(runif(N) < 0.85, jj, ((jj - 1 + mv2) %% J) + 1)
+  y1 = ifelse(runif(N) < a1, sample.int(J, N, replace = TRUE, prob = rho), jj)
+  y2 = ifelse(runif(N) < a2, sample.int(J, N, replace = TRUE, prob = rho), l_true)
+  tab = dplyr::count(data.frame(X = xi, Y1 = y1, Y2 = y2), X, Y1, Y2, name = "n")
+  Tdf = do.call(rbind, lapply(1:J, function(j){
+    data.frame(j = j, l = c(j, ((j - 1 + 1:3) %% J) + 1),
+               t = c(0.85, rep(0.05, 3)))
+  }))
+  out_T = misclassifyr_rl_em(tab, J, J, T2 = Tdf)
+  expect_true(out_T$converged)
+  expect_lt(abs(out_T$alpha["alpha1"] - a1), 0.02)
+  expect_lt(abs(out_T$alpha["alpha2"] - a2), 0.02)
+  # Ignoring T (identity model) misreads true moves as link failures,
+  # inflating alpha2 by roughly the true move rate - the design point.
+  out_I = misclassifyr_rl_em(tab, J, J)
+  expect_gt(unname(out_I$alpha["alpha2"]), a2 + 0.08)
+  # T2 validation
+  bad = Tdf; bad$t[1] = 0.5
+  expect_error(misclassifyr_rl_em(tab, J, J, T2 = bad), "sum to one")
+})

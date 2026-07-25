@@ -12,6 +12,7 @@ misclassifyr_rl_em(
   rho2 = NULL,
   alpha_fixed = NULL,
   alpha_0 = 0.2,
+  T2 = NULL,
   tol = 1e-08,
   maxit = 500,
   verbose = FALSE
@@ -38,6 +39,18 @@ and the fine-geography Pi is then estimated with alpha held fixed to
 avoid the incidental-parameters bias of a free high-dimensional Pi.}
 
 \item{alpha_0}{Numeric starting value for both alpha parameters.}
+
+\item{T2}{Optional sparse "true transition" operator for the SECOND
+measure, as a data.frame with columns \code{j} (latent category), \code{l}
+(observed category), \code{t} (probability), rows summing to one within
+\code{j}. When supplied, the second measure's model becomes
+\eqn{\Delta^{(2)} = (1-\alpha_2) T + \alpha_2 \mathbf{1}\rho_2^\top}:
+a correct link observes a draw from \code{T} applied to the latent value
+(e.g. true migration between the two observation dates, disciplined
+by external data such as the 1940 census migration question), while a
+failed link draws from \eqn{\rho_2}. \code{T2 = NULL} (default) is the
+identity — the plain record-linkage model. \code{T2} is held fixed (a
+plug-in), not estimated.}
 
 \item{tol}{Relative log-likelihood convergence tolerance.}
 
