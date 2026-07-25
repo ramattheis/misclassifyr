@@ -10,6 +10,7 @@ misclassifyr_rl_em(
   K,
   rho1 = NULL,
   rho2 = NULL,
+  alpha_fixed = NULL,
   alpha_0 = 0.2,
   tol = 1e-08,
   maxit = 500,
@@ -28,6 +29,13 @@ codes; \code{Y1}, \code{Y2} share the same coding with \code{J} categories) and 
 \item{rho1, rho2}{Optional length-\code{J} probability vectors fixing the
 failed-link draw distributions (e.g. known population margins). If
 \code{NULL} (default) they are estimated.}
+
+\item{alpha_fixed}{Optional length-2 vector fixing (alpha1, alpha2)
+instead of estimating them — the second step of the two-step
+architecture for high-dimensional outcomes, where alpha is first
+estimated at a coarser aggregation (dense cells, standard asymptotics)
+and the fine-geography Pi is then estimated with alpha held fixed to
+avoid the incidental-parameters bias of a free high-dimensional Pi.}
 
 \item{alpha_0}{Numeric starting value for both alpha parameters.}
 

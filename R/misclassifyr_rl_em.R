@@ -28,6 +28,12 @@
 #' @param rho1,rho2 Optional length-`J` probability vectors fixing the
 #'   failed-link draw distributions (e.g. known population margins). If
 #'   `NULL` (default) they are estimated.
+#' @param alpha_fixed Optional length-2 vector fixing (alpha1, alpha2)
+#'   instead of estimating them — the second step of the two-step
+#'   architecture for high-dimensional outcomes, where alpha is first
+#'   estimated at a coarser aggregation (dense cells, standard asymptotics)
+#'   and the fine-geography Pi is then estimated with alpha held fixed to
+#'   avoid the incidental-parameters bias of a free high-dimensional Pi.
 #' @param alpha_0 Numeric starting value for both alpha parameters.
 #' @param tol Relative log-likelihood convergence tolerance.
 #' @param maxit Maximum EM iterations.
@@ -38,6 +44,7 @@
 #' @export
 misclassifyr_rl_em = function(tab, J, K,
                               rho1 = NULL, rho2 = NULL,
+                              alpha_fixed = NULL,
                               alpha_0 = 0.2,
                               tol = 1e-8, maxit = 500, verbose = FALSE){
 
@@ -95,7 +102,15 @@ misclassifyr_rl_em = function(tab, J, K,
   est_rho1 = is.null(rho1); est_rho2 = is.null(rho2)
   if(est_rho1){ r1_tmp = rowsum(n, k); rho1 = numeric(J); rho1[as.integer(rownames(r1_tmp))] = r1_tmp / N }
   if(est_rho2){ r2_tmp = rowsum(n, l); rho2 = numeric(J); rho2[as.integer(rownames(r2_tmp))] = r2_tmp / N }
-  alpha1 = alpha_0; alpha2 = alpha_0
+  est_alpha = is.null(alpha_fixed)
+  if(!est_alpha){
+    if(length(alpha_fixed) != 2 || any(alpha_fixed <= 0) || any(alpha_fixed >= 1)){
+      stop("`alpha_fixed` must be a length-2 vector with values in (0, 1).")
+    }
+    alpha1 = alpha_fixed[1]; alpha2 = alpha_fixed[2]
+  } else {
+    alpha1 = alpha_0; alpha2 = alpha_0
+  }
 
   #------------------------------------------------------------
   # EM iterations
@@ -127,8 +142,10 @@ misclassifyr_rl_em = function(tab, J, K,
     ll_old = ll
 
     # M-step ---------------------------------------------------
-    alpha1 = sum(n * (r01 + r00)) / N
-    alpha2 = sum(n * (r10 + r00)) / N
+    if(est_alpha){
+      alpha1 = sum(n * (r01 + r00)) / N
+      alpha2 = sum(n * (r10 + r00)) / N
+    }
     if(est_rho1){
       r1_tmp = rowsum(n * (r01 + r00), k)
       rho1 = numeric(J); rho1[as.integer(rownames(r1_tmp))] = r1_tmp

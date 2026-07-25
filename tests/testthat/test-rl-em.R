@@ -63,3 +63,15 @@ test_that("EM validates malformed inputs", {
   expect_error(misclassifyr_rl_em(d$tab, J = 4, K = 4, rho1 = rep(0.5, 4)),
                "probability vectors")
 })
+
+test_that("EM with alpha_fixed holds alpha and still recovers Pi", {
+  d = rl_dgp(J = 4, N = 1e5, alpha1 = 0.2, alpha2 = 0.3, seed = 25)
+  out = misclassifyr_rl_em(d$tab, J = 4, K = 4, alpha_fixed = c(0.2, 0.3))
+  expect_true(out$converged)
+  expect_equal(unname(out$alpha), c(0.2, 0.3))
+  Pi_hat = matrix(0, 4, 4)
+  Pi_hat[cbind(out$Pi$j, out$Pi$i)] = out$Pi$p
+  expect_lt(max(abs(Pi_hat - d$Pi_true)), 0.02)
+  expect_error(misclassifyr_rl_em(d$tab, J = 4, K = 4, alpha_fixed = c(0.2)),
+               "length-2")
+})
