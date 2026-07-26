@@ -10,8 +10,24 @@ model_to_Delta_RL_ind(psi)
 \item{psi}{A numeric vector of length 2(\code{J}-1)+2\code{J} corresponding to the column and row scales of the record linkage.}
 }
 \value{
-A numeric vector of length \code{J}^3 corresponding to the values of the \code{J}x\code{J}^2 matrix \code{Delta}.
+A numeric vector of length \code{J}^3 corresponding to the values of the
+\code{J}x\code{J}^2 matrix \code{Delta}, built from single-measure matrices of the
+record-linkage "slab" form \verb{(1 - alpha) I + rho alpha'}.
 }
 \description{
 Maps model parameters, psi, to Delta, the distribution of Y1, Y2 | Y* under record linkage error structure.
+}
+\examples{
+J <- 3
+alpha <- 0.2
+# Uniform draw distribution (first 2 * (J - 1) entries) and a common
+# false-link rate alpha for both measures (last 2 * J entries)
+psi <- c(rep(0, J - 1), rep(0, J - 1),
+         rep(qlogis(alpha), J), rep(qlogis(alpha), J))
+D <- matrix(model_to_Delta_RL_ind(psi), nrow = J)
+rowSums(D)  # all ones
+
+# The implied single-measure matrix: (1 - alpha) on the diagonal plus a
+# uniform slab of total mass alpha in every column
+round(diag(J) * (1 - alpha) + outer(rep(1 / J, J), rep(alpha, J)), 3)
 }

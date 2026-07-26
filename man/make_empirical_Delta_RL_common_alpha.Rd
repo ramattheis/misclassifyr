@@ -7,11 +7,30 @@
 make_empirical_Delta_RL_common_alpha(tab)
 }
 \arguments{
-\item{tab}{tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names \code{Y1}, \code{Y2}, \code{X}, and \code{n} where \code{n} is a non-negative numeric vector corresponding to the counts of \code{Y1},\code{Y2}, and \code{X}. The rows should be ordered according to \code{order(Y2,Y1,X)}.}
+\item{tab}{A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names \code{Y1}, \code{Y2}, \code{X}, and \code{n} where \code{n} is a non-negative numeric vector corresponding to the counts of \code{Y1},\code{Y2}, and \code{X}. The rows should be ordered according to \code{order(Y2,Y1,X)}.}
 }
 \value{
-A list including 1. a function or a list of functions that map model parameters \code{psi} to the misclassification matrix \code{Delta}, 2. a vector or list of vectors corresponding to initial values of psi , and 3. a function or list of functions for the log prior of Delta in this model.
+A list with three elements ready to be handed to
+\code{\link[=misclassifyr]{misclassifyr()}}: \code{model_to_Delta}, a function (or list of functions,
+one per control cell) mapping the two-element parameter \code{psi} to the
+misclassification matrix \code{Delta}; \code{psi_0}, a vector (or list of vectors)
+of starting values; and \code{log_prior_Delta}, a function (or list of
+functions) giving the log prior of \code{Delta} in this model.
 }
 \description{
 Creates a function for model_to_Delta based on RL structure errors and the empirical distribution of Y1 and Y2 assuming RL errors are independent of Y*
+}
+\examples{
+set.seed(1)
+syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 5000,
+                      dgp_delta = "Record Linkage, independent, 10 - 30\%")
+design <- make_empirical_Delta_RL_common_alpha(syn$tab[[1]])
+
+# Exactly two parameters: one false-link rate per measure
+design$psi_0
+
+# Verify the design at a 20\% / 30\% false-link rate
+D <- matrix(design$model_to_Delta(qlogis(c(0.2, 0.3))), nrow = 3)
+dim(D)
+rowSums(D)
 }

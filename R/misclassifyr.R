@@ -22,7 +22,6 @@
 #' @param misclassification_size A numeric value between zero and 1/2 representing a guess for the average share of misclassified values in Y. The initial value for `psi_0` will have a diagonal of 1-`misclassification_size` if `psi_0` is not otherwise specified.
 #' @param X_vals A numeric vector or list of numeric vectors providing the values of X associated with the columns of Pi.
 #' @param Y_vals A numeric vector or list of numeric vectors providing the values of Y associated with the rows of Pi.
-#' @param split_eta An integer or list indicating where to split the vector `eta` in `phi` and `psi`, the arguments to `model_to_Pi` and `model_to_Delta` respectively.
 #' @param X_col_name A character vector corresponding to the variable of the regressor X, used only for plots.
 #' @param Y_col_name A character vector corresponding to the variable of the outcome Y, used only for plots.
 #' @param mle A logical value indicating whether to estimate Pi and Delta via MLE. Defaults to TRUE.
@@ -39,8 +38,116 @@
 #' @param thinning_rate An integer indicating how frequently to record posterior draws from the MCMC chain -- e.g. a `thinning_rate` of 2 records every other draw.
 #' @param gibbs_proposal_sd A numeric value giving the standard deviation for the proposal distribution in each Gibbs step.
 #' @param cores An integer for the number of CPUs available for parallel processing.
-#' @return A list containing the following components:
-#'   - `$Pi_hat_MLE`: The MLE estimate of the joint distribution of \eqn{X} and \eqn{Y^*}, \eqn{\Pi}.
+#'
+#' @return A list of 24 components. When control cells are used (`tab` is a
+#'   list), every estimation component below is itself a list with one entry
+#'   per control cell, named by `W_names`. Components belonging to an
+#'   estimator that was not requested are returned as `NA`.
+#'
+#'   Maximum likelihood output (`mle = TRUE`):
+#'   \describe{
+#'     \item{`Pi_hat_mle`}{The MLE of the joint distribution of \eqn{X} and
+#'       \eqn{\Pi}, as a vector of length `J * K` holding a `J` by `K`
+#'       matrix column-major (rows index \eqn{Y^*}, columns index \eqn{X}).}
+#'     \item{`Delta_hat_mle`}{The MLE of the misclassification distribution
+#'       \eqn{\Delta}, as a length-`J`^3 vector holding a `J` x `J`^2 matrix;
+#'       column `(y2 - 1) * J + y1` of row `ystar` is
+#'       \eqn{\Pr(Y_1 = y_1, Y_2 = y_2 \mid Y^* = ystar)}.}
+#'     \item{`cov_Pi_mle`}{The `J * K` by `J * K` estimated covariance matrix
+#'       of `Pi_hat_mle`, obtained by the delta method from the inverse
+#'       Fisher information for the `Pi` block. Pass it to [Pi_to_beta()].}
+#'     \item{`eta_hat_mle`}{The MLE in the unconstrained parameter space, the
+#'       concatenation `c(phi, psi)` of the arguments to `model_to_Pi` and
+#'       `model_to_Delta`.}
+#'     \item{`log_likelihood_mle`}{The maximized log likelihood (including any
+#'       diagonal-dominance penalty).}
+#'     \item{`optim_counts`}{The function and gradient evaluation counts
+#'       reported by [stats::optim()].}
+#'     \item{`model_to_Pi_jacobian`}{The Jacobian of `model_to_Pi` evaluated
+#'       at `eta_hat_mle`, used to form `cov_Pi_mle`.}
+#'     \item{`eta_hessian_mle`}{The Hessian of the log likelihood in `eta`.
+#'       Its negative is the observed information; near-zero eigenvalues flag
+#'       flat directions (boundary solutions or weak identification).}
+#'     \item{`fisher_info_err`}{A character string reporting whether the
+#'       Fisher information for the `Pi` block was invertible. When it is not,
+#'       a Moore-Penrose inverse is substituted and the analytical standard
+#'       errors should not be trusted.}
+#'     \item{`inconsistency_mle`}{The total absolute distance between the
+#'       estimate from the default starting value and the estimates from
+#'       perturbed starting values (one perturbation, or nine when
+#'       `check_stability = TRUE`). Values above about 0.1 indicate that the
+#'       likelihood has multiple optima.}
+#'   }
+#'
+#'   Posterior output (`bayesian = TRUE`):
+#'   \describe{
+#'     \item{`posterior_Pi`}{A data frame of post-burn-in posterior draws of
+#'       \eqn{\Pi}, with columns `Pi_hat`, `X_name`, `Y_name`, `X_val`,
+#'       `Y_val` and `draw`.}
+#'     \item{`posterior_Delta`}{The analogous data frame for \eqn{\Delta},
+#'       with columns `Delta_hat`, `Ys_name`, `Y1_name`, `Y2_name`, the
+#'       matching `_val` columns and `draw`.}
+#'     \item{`posterior_eta`}{A matrix of post-burn-in draws of the
+#'       unconstrained parameter `eta`, one row per retained draw.}
+#'     \item{`ll_history`}{A data frame with columns `ll` and `draw` recording
+#'       the log posterior along the thinned chain, including burn-in. Pass it
+#'       to [Pi_to_beta()] to build the Chen-Christensen-Tamer confidence
+#'       set.}
+#'     \item{`accepted_proposals`}{The total number of accepted
+#'       Metropolis-Hastings proposals across the whole chain.}
+#'     \item{`trace_plots_eta`, `trace_plots_Pi`, `trace_plots_Delta`}{Named
+#'       lists of `ggplot` trace plots, one per parameter, per cell of
+#'       \eqn{\Pi} and per cell of \eqn{\Delta} (`NA` if
+#'       `makeplots = FALSE`).}
+#'   }
+#'
+#'   Bookkeeping and figures:
+#'   \describe{
+#'     \item{`W_weights`}{The total count `sum(tab$n)` in the cell, used to
+#'       weight control cells when aggregating.}
+#'     \item{`misclassification_inputs`}{The inputs actually used, after
+#'       defaults were filled in: `tab`, `J`, `K`, the name and value vectors,
+#'       and the starting values `phi_0`, `psi_0`, `eta_0`.}
+#'     \item{`Pi_hat_mle_plot`, `Delta_hat_mle_plot`}{`ggplot` heatmaps of the
+#'       MLE of \eqn{\Pi} and of \eqn{\Pr(Y_1 \mid Y^*)} (`NA` if
+#'       `makeplots = FALSE` or `mle = FALSE`).}
+#'     \item{`Pi_hat_posterior_plot`, `Delta_hat_posterior_plot`}{The same
+#'       heatmaps built from posterior means (`NA` if `makeplots = FALSE` or
+#'       `bayesian = FALSE`).}
+#'   }
+#'
+#' @seealso [prep_misclassification_data()] to build `tab`, [Pi_to_beta()] to
+#'   turn `Pi_hat_mle` into a regression coefficient, and
+#'   `vignette("getting-started")`.
+#'
+#' @examples
+#' # A three-category outcome measured twice, with record-linkage errors
+#' set.seed(1)
+#' syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 20000,
+#'                       dgp_delta = "Record Linkage, independent, 10 - 30%")
+#'
+#' fit <- suppressMessages(misclassifyr(
+#'   tab = syn$tab[[1]], J = 3, K = 3,
+#'   X_names = as.character(1:3),
+#'   Y1_names = as.character(1:3),
+#'   Y2_names = as.character(1:3),
+#'   model_to_Delta = model_to_Delta_RL_ind,
+#'   X_vals = 1:3, Y_vals = 1:3,
+#'   mle = TRUE, bayesian = FALSE, makeplots = FALSE
+#' ))
+#'
+#' # The estimated joint distribution of X and the latent outcome
+#' round(matrix(fit$Pi_hat_mle, nrow = 3), 3)
+#' round(syn$Pi[[1]], 3)                     # the truth
+#'
+#' # Diagnostics worth reading before believing anything
+#' fit$fisher_info_err
+#' fit$inconsistency_mle
+#' fit$log_likelihood_mle
+#'
+#' # The implied error rates: Pr(Y1 | Y*), marginalizing Delta over Y2
+#' marginalize <- do.call(rbind, replicate(3, diag(3), simplify = FALSE))
+#' round(matrix(fit$Delta_hat_mle, nrow = 3) %*% marginalize, 3)
 #' @export
 misclassifyr <- function(
     tab,
@@ -79,8 +186,10 @@ misclassifyr <- function(
   # Catching errors in some variables
   #------------------------------------------------------------
 
-  if(class(bayesian) != "logical"){stop("`bayesian` should be TRUE or FALSE.")}
-  if(class(mle) != "logical"){stop("`mle` should be TRUE or FALSE.")}
+  # (is.logical() rather than class(x) != "logical": identical behaviour here,
+  # but R CMD check flags class()-vs-string comparisons.)
+  if(!is.logical(bayesian)){stop("`bayesian` should be TRUE or FALSE.")}
+  if(!is.logical(mle)){stop("`mle` should be TRUE or FALSE.")}
   if(!bayesian&!mle){stop("Either `bayesian` or `mle` should be TRUE.")}
 
   if(!identical(cores%%1,0)){

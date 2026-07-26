@@ -10,8 +10,21 @@ model_to_Delta_NP(psi)
 \item{psi}{A numeric vector of length\code{J}^2*(\code{J}-1) containing all but the last row of \code{Delta}.}
 }
 \value{
-A numeric vector corresponding to the \code{J}x\code{J}^2 matrix \code{Delta}.
+A numeric vector of length \code{J}^3 corresponding to the values of the
+\code{J}x\code{J}^2 matrix \code{Delta}. The rows of the matrix index the latent outcome
+\verb{Y*}; the columns index the pair \verb{(Y1, Y2)} with \code{Y1} varying fastest, so
+that column \code{(y2 - 1) * J + y1} holds \verb{Pr(Y1 = y1, Y2 = y2 | Y* = y*)}.
 }
 \description{
 Maps model parameters, psi, to Delta, the fully non-parametric  distribution of Y1, Y2 | Y*
+}
+\examples{
+# J = 2: 2 x 4 matrix, 2^2 * (2 - 1) = 4 free parameters
+D <- matrix(model_to_Delta_NP(rep(0, 4)), nrow = 2)
+dim(D)          # 2 x 4
+rowSums(D)      # each row is a distribution over (Y1, Y2): all ones
+}
+\seealso{
+\code{\link[=model_to_Delta_NP_ind]{model_to_Delta_NP_ind()}} for the conditionally independent
+version, \code{\link[=model_to_Delta_RL_ind]{model_to_Delta_RL_ind()}} for the record-linkage version.
 }

@@ -14,8 +14,16 @@ model_to_Pi_NP(phi, J, ...)
 \item{...}{Additional, optional arguments.}
 }
 \value{
-A numeric vector corresponding to the JxK matrix Pi
+A numeric vector of length \code{J * K} corresponding to the \code{J} by \code{K}
+matrix \code{Pi}, stored column-major: rows index \eqn{Y^*}, columns index \eqn{X}.
 }
 \description{
 Maps model parameters, phi, to the joint distribution of X and Y*, Pi.
+}
+\examples{
+# phi = log(2, 3, 4) maps to probabilities (2, 3, 4, 1) / 10
+model_to_Pi_NP(log(c(2, 3, 4)), J = 2)
+
+# Flat parameters give the uniform joint distribution
+matrix(model_to_Pi_NP(rep(0, 3 * 3 - 1), J = 3), nrow = 3)
 }

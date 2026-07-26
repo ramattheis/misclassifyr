@@ -38,6 +38,54 @@ Pi_to_beta(
 
 \item{ll_history}{A data frame with columns \code{ll} and \code{draw} (or a list of such data frames split by control cell), as returned in \verb{$ll_history} by \code{misclassifyr(bayesian = TRUE)}. Required for the Chen-Christensen-Tamer HPD confidence set; if omitted, \code{HPD_draws} and \code{HPDCI} are returned as \code{NA}.}
 }
+\value{
+A list with twelve elements. Slots that were not requested are
+returned as \code{NA}.
+\describe{
+\item{\code{beta_hat_mle}}{The maximum likelihood estimate of \eqn{\beta},
+pooled across control cells.}
+\item{\code{se_beta_mle}}{Its delta-method standard error.}
+\item{\code{betas_hat_mle}}{A vector of within-control-cell estimates of
+\eqn{\beta} (\code{NA} when there are no control cells).}
+\item{\code{se_betas_mle}}{Their delta-method standard errors.}
+\item{\code{posterior_beta}}{A vector of \eqn{\beta} evaluated at each
+posterior draw of \eqn{\Pi}.}
+\item{\code{posterior_beta_med}, \code{posterior_beta_sd}}{The median and
+standard deviation of \code{posterior_beta}.}
+\item{\code{posterior_betas}, \code{posterior_betas_med}, \code{posterior_betas_sd}}{
+The same objects computed within each control cell.}
+\item{\code{HPD_draws}}{The indices of the posterior draws in the highest
+posterior density region used for the confidence set.}
+\item{\code{HPDCI}}{The Chen-Christensen-Tamer Monte Carlo confidence set
+for \eqn{\beta}: the range of \code{posterior_beta} over \code{HPD_draws}.}
+}
+}
 \description{
 This function computes \eqn{\beta} in the linear regression \eqn{Y^* = \alpha + \beta X + \epsilon} given the joint distribution of \eqn{X} and \eqn{Y^*}, \eqn{\Pi}, and a set of scalars associated with each value of \eqn{X} and \eqn{Y^*}.
+}
+\examples{
+set.seed(1)
+syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 20000,
+                      dgp_delta = "Record Linkage, independent, 10 - 30\%")
+
+fit <- suppressMessages(misclassifyr(
+  tab = syn$tab[[1]], J = 3, K = 3,
+  X_names = as.character(1:3),
+  Y1_names = as.character(1:3),
+  Y2_names = as.character(1:3),
+  model_to_Delta = model_to_Delta_RL_ind,
+  X_vals = 1:3, Y_vals = 1:3,
+  mle = TRUE, bayesian = FALSE, makeplots = FALSE
+))
+
+out <- Pi_to_beta(X_vals = 1:3, Y_vals = 1:3, mle = TRUE,
+                  Pi_mle = fit$Pi_hat_mle, cov_Pi = fit$cov_Pi_mle)
+out$beta_hat_mle
+out$se_beta_mle
+
+# Compare with the truth and with the naive slope of Y1 on X
+Pi_to_beta_inner(c(syn$Pi[[1]]), 1:3, 1:3, 1)
+tb <- syn$tab[[1]]
+Pi_naive <- tapply(tb$n, list(tb$Y1, tb$X), sum)
+Pi_to_beta_inner(c(Pi_naive / sum(Pi_naive)), 1:3, 1:3, 1)
 }

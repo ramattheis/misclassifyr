@@ -54,8 +54,59 @@ prep_misclassification_data(
 \item{sparse}{A logical value. If TRUE, the returned tabulation keeps only observed (positive-count) cells and adds a \code{cell_idx} column giving each cell's position in the balanced (Y2, Y1, X)-ordered layout. Use for high-dimensional outcomes where the balanced table (J^2 x K rows) is impractically large; misclassifyr() accepts either form and returns identical estimates.}
 }
 \value{
-A list of objects including tabulated data to be used in misclassifyr()
+A list to be handed to \code{\link[=misclassifyr]{misclassifyr()}}, containing \code{tab} (the
+tabulation, or a list of tabulations split by control cell), the
+dimensions \code{J} and \code{K}, the category labels \code{X_names}, \code{Y1_names},
+\code{Y2_names} and \code{W_names}, and --- when \code{record_vals = TRUE} --- the
+numeric scores \code{X_vals} and \code{Y_vals} attached to each category, which
+\code{\link[=Pi_to_beta]{Pi_to_beta()}} needs to turn the estimated joint distribution into a
+regression coefficient.
 }
 \description{
 This function tabulates data and generates metadata in a format to be used with the misclassifyr() function.
+}
+\examples{
+data(ancienregime)
+occ <- c("Vagabond", "Metayer", "Journalier",
+         "Petit Metiers", "Petite Bourgeoisie", "Haute Bourgeoisie")
+
+# Categorical outcome: the son's occupation, measured twice
+inputs <- prep_misclassification_data(
+  data = ancienregime,
+  outcome_1 = "son_occupation_1780",
+  outcome_2 = "son_occupation_1770",
+  regressor = "father_occupation_1750",
+  X_names = occ, Y1_names = occ, Y2_names = occ,
+  weights = "linked_weight"
+)
+inputs$J
+inputs$K
+nrow(inputs$tab)          # a balanced J^2 * K table
+head(inputs$tab)
+
+# Continuous outcome binned by occupation, with the within-bin mean income
+# recorded as the score for each category
+inputs_cts <- prep_misclassification_data(
+  data = ancienregime,
+  outcome_1 = "son_income_1780",
+  outcome_2 = "son_income_1770",
+  regressor = "father_income_1750",
+  outcome_1_bin = "son_occupation_1780",
+  outcome_2_bin = "son_occupation_1770",
+  regressor_bin = "father_occupation_1750",
+  weights = "linked_weight",
+  record_vals = TRUE, round_vals = 0
+)
+round(inputs_cts$Y_vals)
+
+# Sparse mode keeps only the cells that actually occur
+sp <- prep_misclassification_data(
+  data = ancienregime,
+  outcome_1 = "son_occupation_1780",
+  outcome_2 = "son_occupation_1770",
+  regressor = "father_occupation_1750",
+  X_names = occ, Y1_names = occ, Y2_names = occ,
+  weights = "linked_weight", sparse = TRUE
+)
+nrow(sp$tab)
 }

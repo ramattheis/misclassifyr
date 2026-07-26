@@ -2,3 +2,10 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.github$
+^LICENSE\.md$
+^\.\.pdf$
+^misclassifyr\.pdf$
+^\.Rhistory$
+\.DS_Store$
+^CRAN-SUBMISSION$
+^cran-comments\.md$

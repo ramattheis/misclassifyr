@@ -1,23 +1,35 @@
 Package: misclassifyr
-Title: Estimation and Inference for Models of Misclassification. 
-Version: 0.2.3
-Authors@R: 
+Title: Estimation and Inference for Models of Misclassification
+Version: 0.3.0
+Authors@R:
     person("Ross", "Mattheis", , "ramattheis@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-3709-2271"))
-Description: This package provides tools for estimation and inference of simple misclassification models, as described in Mattheis (2024). 
-License: `use_mit_license()`
+Description: Maximum likelihood estimation and inference for models of
+    misclassification, in which a discrete latent outcome is observed only
+    through two noisy measures, as described in Mattheis (2024). The package
+    supplies tabulation helpers, a menu of parametric and non-parametric
+    models for the misclassification distribution, delta-method standard
+    errors and Monte Carlo confidence sets for a downstream regression
+    coefficient, and a fast expectation-maximization estimator for the
+    record-linkage model when the outcome has thousands of categories.
+License: MIT + file LICENSE
 Encoding: UTF-8
+URL: https://github.com/ramattheis/misclassifyr
+BugReports: https://github.com/ramattheis/misclassifyr/issues
 Roxygen: list(markdown = TRUE)
-Imports: 
-    Rcpp,
+Depends:
+    R (>= 4.1)
+Imports:
     dplyr,
     ggplot2,
     parallel,
     pbapply,
     numDeriv,
     pracma,
-    Matrix
-Suggests: 
+    Matrix,
+    stats,
+    utils
+Suggests:
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)

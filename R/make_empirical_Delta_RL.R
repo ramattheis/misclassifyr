@@ -2,7 +2,27 @@
 #'
 #' @param tab tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names `Y1`, `Y2`, `X`, and `n` where `n` is a non-negative numeric vector corresponding to the counts of `Y1`,`Y2`, and `X`. The rows should be ordered according to `order(Y2,Y1,X)`.
 #' @param J An integer or list corresponding to the number of unique values of `Y1` and `Y2`.
-#' @return A list including 1. a function or a list of functions that map model parameters `psi` to the misclassification matrix `Delta`, 2. a vector or list of vectors corresponding to initial values of psi , and 3. a function or list of functions for the log prior of Delta in this model.
+#' @return A list with three elements ready to be handed to
+#'   [misclassifyr()]: `model_to_Delta`, a function (or list of functions,
+#'   one per control cell) mapping model parameters `psi` to the
+#'   misclassification matrix `Delta`; `psi_0`, a vector (or list of vectors)
+#'   of starting values; and `log_prior_Delta`, a function (or list of
+#'   functions) giving the log prior of `Delta` in this model.
+#' @examples
+#' set.seed(1)
+#' syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 5000,
+#'                       dgp_delta = "Record Linkage, independent, 10 - 30%")
+#' design <- make_empirical_Delta_RL(syn$tab[[1]], J = 3)
+#'
+#' # 2 * J false-link rates (one per category, per measure); psi_0 starts them
+#' # all near plogis(-2) = 0.12
+#' length(design$psi_0)
+#'
+#' # Verify the design: J x J^2 with rows summing to one
+#' D <- matrix(design$model_to_Delta(design$psi_0), nrow = 3)
+#' dim(D)
+#' rowSums(D)
+#' design$log_prior_Delta(design$psi_0)
 #' @export
 make_empirical_Delta_RL = function(tab,J){
 

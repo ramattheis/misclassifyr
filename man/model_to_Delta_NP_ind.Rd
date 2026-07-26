@@ -7,11 +7,27 @@
 model_to_Delta_NP_ind(psi)
 }
 \arguments{
-\item{psi}{A numeric vector of length 2x\code{J}x(\code{J}-1) containing Delta^{(1)} and Delta^{(2)}.}
+\item{psi}{A numeric vector of length \code{2 * J * (J - 1)} holding the
+parameters of \eqn{\Delta^{(1)}} and \eqn{\Delta^{(2)}}, the two
+single-measure misclassification matrices, stacked in that order.}
 }
 \value{
-A numeric vector of length \code{J}^3 corresponding to the values of the \code{J}x\code{J}^2 matrix \code{Delta}.
+A numeric vector of length \code{J}^3 corresponding to the values of the
+\code{J}x\code{J}^2 matrix \code{Delta}. Column \code{(y2 - 1) * J + y1} of row \verb{y*} holds
+\verb{Pr(Y1 = y1 | Y* = y*) * Pr(Y2 = y2 | Y* = y*)}.
 }
 \description{
 Maps model parameters, psi, to Delta, the distribution of Y1, Y2 | Y* under conditional independence of Y1, Y2 on Y
+}
+\examples{
+J <- 3
+# Flat parameters give the uniform (fully uninformative) error distribution
+D <- matrix(model_to_Delta_NP_ind(rep(0, 2 * J * (J - 1))), nrow = J)
+dim(D)                     # 3 x 9
+rowSums(D)                 # all ones
+
+# A diagonal-dominant design: recover Pr(Y1 | Y*) by marginalizing over Y2
+set.seed(1)
+D <- matrix(model_to_Delta_NP_ind(rnorm(2 * J * (J - 1))), nrow = J)
+round(D \%*\% do.call(rbind, replicate(J, diag(J), simplify = FALSE)), 3)
 }

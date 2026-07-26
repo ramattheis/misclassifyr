@@ -32,7 +32,7 @@ coding across cells).}
 }
 \value{
 A list: \code{alpha} (shared), \code{cells} (per-cell lists with \code{rho1},
-\code{rho2}, \code{Pi}), \code{loglik}, \code{loglik_trace}, \code{n_iter}, \code{converged}.
+\code{rho2}, \code{Pi}, \code{N}), \code{loglik}, \code{loglik_trace}, \code{n_iter}, \code{converged}.
 }
 \description{
 Estimates the record-linkage misclassification model on a LIST of
@@ -50,4 +50,34 @@ The E-step runs per cell with the common alpha; the M-step pools the
 expected failed-link counts across cells for alpha and updates rho_c,
 Pi_c within cells. An optional common T2 operator (see
 \code{\link{misclassifyr_rl_em}}) applies to every cell.
+}
+\examples{
+# Four birthplace cells; a failed link draws a phantom from within the
+# SAME cell, because the linking algorithm matched on birthplace.
+set.seed(41)
+C <- 4; J <- 20; N <- 40000; alpha <- 0.25
+cell <- sample.int(C, N, replace = TRUE)
+base <- (cell - 1) * 5
+xi <- base + sample.int(5, N, replace = TRUE)
+j  <- ifelse(runif(N) < 0.8, xi, base + sample.int(5, N, replace = TRUE))
+y1 <- ifelse(runif(N) < alpha, base + sample.int(5, N, replace = TRUE), j)
+y2 <- ifelse(runif(N) < alpha, base + sample.int(5, N, replace = TRUE), j)
+df <- data.frame(cell = cell, X = xi, Y1 = y1, Y2 = y2)
+
+tabs <- lapply(split(df, df$cell), function(d)
+  aggregate(list(n = rep(1, nrow(d))),
+            by = list(X = d$X, Y1 = d$Y1, Y2 = d$Y2), FUN = sum))
+
+stacked <- misclassifyr_rl_em_stacked(tabs, J = J, K = J)
+stacked$alpha   # close to (0.25, 0.25)
+
+# Pooling the cells and using the unconditional margin as the phantom
+# distribution biases alpha downward
+pooled_tab <- aggregate(list(n = rep(1, N)),
+                        by = list(X = df$X, Y1 = df$Y1, Y2 = df$Y2), FUN = sum)
+misclassifyr_rl_em(pooled_tab, J = J, K = J)$alpha
+}
+\seealso{
+\code{\link[=misclassifyr_rl_em]{misclassifyr_rl_em()}} for the single-tabulation version, and
+\code{vignette("designing-misclassification-models")} for when to stack.
 }

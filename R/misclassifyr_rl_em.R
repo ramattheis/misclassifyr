@@ -52,6 +52,30 @@
 #' @return A list: `alpha` (length 2), `rho1`, `rho2`, `Pi` (data.frame
 #'   `j`, `i`, `p` over the support), `loglik` (final), `loglik_trace`,
 #'   `n_iter`, `converged`.
+#' @seealso [misclassifyr_rl_em_stacked()] to share `alpha` across
+#'   conditioning cells, and `vignette("sparse-and-large")`.
+#' @examples
+#' # Simulate the record-linkage model directly: the latent value moves away
+#' # from X with probability 0.2, and each measure is a failed link (an
+#' # independent draw from rho) with probability alpha_m.
+#' set.seed(1)
+#' J <- 40; N <- 50000
+#' xi <- sample.int(J, N, replace = TRUE)
+#' j  <- ifelse(runif(N) < 0.8, xi, sample.int(J, N, replace = TRUE))
+#' rho <- tabulate(j, J) / N
+#' y1 <- ifelse(runif(N) < 0.15, sample.int(J, N, replace = TRUE, prob = rho), j)
+#' y2 <- ifelse(runif(N) < 0.30, sample.int(J, N, replace = TRUE, prob = rho), j)
+#' tab <- aggregate(list(n = rep(1, N)),
+#'                  by = list(X = xi, Y1 = y1, Y2 = y2), FUN = sum)
+#'
+#' fit <- misclassifyr_rl_em(tab, J = J, K = J)
+#' fit$alpha        # close to (0.15, 0.30)
+#' fit$converged
+#' head(fit$Pi)     # only the cells on the support are carried
+#'
+#' # Two-step estimation: hold alpha at a value estimated elsewhere
+#' fit2 <- misclassifyr_rl_em(tab, J = J, K = J, alpha_fixed = c(0.15, 0.30))
+#' fit2$alpha
 #' @export
 misclassifyr_rl_em = function(tab, J, K,
                               rho1 = NULL, rho2 = NULL,

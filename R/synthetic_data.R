@@ -6,7 +6,24 @@
 #' @param sample_size An integer denoting the number of synthetic observations.
 #' @param dgp_delta A character string indicating the data generating process for the synthetic noise, options include, "Nonparametric, independent, strong diagonal", "Record Linkage, independent, 10 - 30%" and ,"No error"
 #' @param dgp_pi A character string indicating the data generating process for the joint distribution of X and Y*
-#' @return A list including tabulated data `tab` and matrices `Pi`, `Delta`
+#' @return A list with three elements, each a list of length `I` (one entry
+#'   per control cell): `tab`, the tabulated data with columns `X`, `Y1`,
+#'   `Y2`, `n` ordered by `order(Y2, Y1, X)`; `Pi`, the `J`x`K` joint
+#'   distribution of `Y*` and `X`; and `Delta`, the `J`x`J`^2 distribution of
+#'   `(Y1, Y2)` given `Y*`.
+#' @examples
+#' set.seed(1)
+#' syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 5000,
+#'                       dgp_delta = "Record Linkage, independent, 10 - 30%")
+#' head(syn$tab[[1]])
+#' round(syn$Pi[[1]], 3)          # the truth the estimator should recover
+#' rowSums(syn$Delta[[1]])        # rows of Delta are distributions: all ones
+#'
+#' # The naive slope of Y1 on X is attenuated relative to the truth
+#' tb <- syn$tab[[1]]
+#' Pi_naive <- tapply(tb$n, list(tb$Y1, tb$X), sum)
+#' Pi_to_beta_inner(c(Pi_naive / sum(Pi_naive)), 1:3, 1:3, 1)
+#' Pi_to_beta_inner(c(syn$Pi[[1]]), 1:3, 1:3, 1)
 #' @keywords internal
 #' @export
 synthetic_data = function(J=5,

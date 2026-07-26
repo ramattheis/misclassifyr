@@ -12,6 +12,51 @@
 #' @param cov_Pi A numeric vector or a list of numeric vectors representing the covariance of estimates of the elements of Pi.
 #' @param posterior_Pi A data frame of posterior draws of Pi (or a list of such data frames split by control cell), as returned in `$posterior_Pi` by `misclassifyr(bayesian = TRUE)`.
 #' @param ll_history A data frame with columns `ll` and `draw` (or a list of such data frames split by control cell), as returned in `$ll_history` by `misclassifyr(bayesian = TRUE)`. Required for the Chen-Christensen-Tamer HPD confidence set; if omitted, `HPD_draws` and `HPDCI` are returned as `NA`.
+#' @return A list with twelve elements. Slots that were not requested are
+#'   returned as `NA`.
+#'   \describe{
+#'     \item{`beta_hat_mle`}{The maximum likelihood estimate of \eqn{\beta},
+#'       pooled across control cells.}
+#'     \item{`se_beta_mle`}{Its delta-method standard error.}
+#'     \item{`betas_hat_mle`}{A vector of within-control-cell estimates of
+#'       \eqn{\beta} (`NA` when there are no control cells).}
+#'     \item{`se_betas_mle`}{Their delta-method standard errors.}
+#'     \item{`posterior_beta`}{A vector of \eqn{\beta} evaluated at each
+#'       posterior draw of \eqn{\Pi}.}
+#'     \item{`posterior_beta_med`, `posterior_beta_sd`}{The median and
+#'       standard deviation of `posterior_beta`.}
+#'     \item{`posterior_betas`, `posterior_betas_med`, `posterior_betas_sd`}{
+#'       The same objects computed within each control cell.}
+#'     \item{`HPD_draws`}{The indices of the posterior draws in the highest
+#'       posterior density region used for the confidence set.}
+#'     \item{`HPDCI`}{The Chen-Christensen-Tamer Monte Carlo confidence set
+#'       for \eqn{\beta}: the range of `posterior_beta` over `HPD_draws`.}
+#'   }
+#' @examples
+#' set.seed(1)
+#' syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 20000,
+#'                       dgp_delta = "Record Linkage, independent, 10 - 30%")
+#'
+#' fit <- suppressMessages(misclassifyr(
+#'   tab = syn$tab[[1]], J = 3, K = 3,
+#'   X_names = as.character(1:3),
+#'   Y1_names = as.character(1:3),
+#'   Y2_names = as.character(1:3),
+#'   model_to_Delta = model_to_Delta_RL_ind,
+#'   X_vals = 1:3, Y_vals = 1:3,
+#'   mle = TRUE, bayesian = FALSE, makeplots = FALSE
+#' ))
+#'
+#' out <- Pi_to_beta(X_vals = 1:3, Y_vals = 1:3, mle = TRUE,
+#'                   Pi_mle = fit$Pi_hat_mle, cov_Pi = fit$cov_Pi_mle)
+#' out$beta_hat_mle
+#' out$se_beta_mle
+#'
+#' # Compare with the truth and with the naive slope of Y1 on X
+#' Pi_to_beta_inner(c(syn$Pi[[1]]), 1:3, 1:3, 1)
+#' tb <- syn$tab[[1]]
+#' Pi_naive <- tapply(tb$n, list(tb$Y1, tb$X), sum)
+#' Pi_to_beta_inner(c(Pi_naive / sum(Pi_naive)), 1:3, 1:3, 1)
 #' @export
 Pi_to_beta = function(
     X_vals,
@@ -163,7 +208,7 @@ Pi_to_beta = function(
         posterior_df = posterior_agg(d)
         lm(Y_val ~ X_val,
            data = posterior_df,
-           weight = posterior_df$Pi_hat
+           weights = posterior_df$Pi_hat
         )$coefficients[2] |> unname()
       })
 
@@ -173,7 +218,7 @@ Pi_to_beta = function(
           posterior_df = subset(posterior_Pi[[j]], draw == d)
           lm(Y_val ~ X_val,
              data = posterior_df,
-             weight = posterior_df$Pi_hat
+             weights = posterior_df$Pi_hat
           )$coefficients[2] |> unname()
         })
       )
@@ -218,7 +263,7 @@ Pi_to_beta = function(
         posterior_df = subset(posterior_Pi, draw == d)
         lm(Y_val ~ X_val,
            data = posterior_df,
-           weight = posterior_df$Pi_hat
+           weights = posterior_df$Pi_hat
         )$coefficients[2] |> unname()
       })
 

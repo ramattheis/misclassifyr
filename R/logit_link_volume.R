@@ -1,7 +1,18 @@
 #' Evaluates the log of the determinant of the Jacobian of the logit link.
 #'
 #' @param x A numeric vector in logit-space corresponding to some .
-#' @return A numeric value equal to the log of the determinant of the Jacobian of the logit transform.
+#' @return A numeric value equal to the log of the determinant of the Jacobian
+#'   of the logit transform (plus a constant that does not depend on `x`).
+#' @examples
+#' # The volume factor that turns a flat prior on the simplex into the
+#' # corresponding prior in unconstrained logit space
+#' logit_link_volume(c(0, 0))
+#'
+#' # It equals the numerical log |det| of the softmax-with-reference map
+#' softmax_free <- function(x) { p <- exp(c(x, 0)); p <- p / sum(p); p[-length(p)] }
+#' x <- c(-1.2, 0.4)
+#' log(abs(det(numDeriv::jacobian(softmax_free, x))))
+#' logit_link_volume(x) - lfactorial(3)
 #' @keywords internal
 #' @export
 logit_link_volume = function(x){

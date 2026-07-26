@@ -18,9 +18,16 @@ se_beta_deltamethod(Pi, cov_Pi, X_vals, Y_vals, W_weights)
 \item{W_weights}{A numeric vector representing the sample size of each control cell.}
 }
 \value{
-A scalar equal to the standard error of beta.
+A scalar equal to the delta-method standard error of beta.
 }
 \description{
 Computes the standard error of beta as function of the joint distribution of X and Y*, Pi
+}
+\examples{
+Pi <- c(diag(3) / 3)
+# No sampling uncertainty in Pi implies no uncertainty in beta
+se_beta_deltamethod(Pi, matrix(0, 9, 9), 1:3, 1:3, 1)
+# A small isotropic covariance for Pi propagates to a positive SE
+se_beta_deltamethod(Pi, diag(1e-4, 9), 1:3, 1:3, 1)
 }
 \keyword{internal}

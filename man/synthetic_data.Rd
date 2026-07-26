@@ -27,9 +27,27 @@ synthetic_data(
 \item{dgp_pi}{A character string indicating the data generating process for the joint distribution of X and Y*}
 }
 \value{
-A list including tabulated data \code{tab} and matrices \code{Pi}, \code{Delta}
+A list with three elements, each a list of length \code{I} (one entry
+per control cell): \code{tab}, the tabulated data with columns \code{X}, \code{Y1},
+\code{Y2}, \code{n} ordered by \code{order(Y2, Y1, X)}; \code{Pi}, the \code{J}x\code{K} joint
+distribution of \verb{Y*} and \code{X}; and \code{Delta}, the \code{J}x\code{J}^2 distribution of
+\verb{(Y1, Y2)} given \verb{Y*}.
 }
 \description{
 Generates synthetic misclassification data.
+}
+\examples{
+set.seed(1)
+syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 5000,
+                      dgp_delta = "Record Linkage, independent, 10 - 30\%")
+head(syn$tab[[1]])
+round(syn$Pi[[1]], 3)          # the truth the estimator should recover
+rowSums(syn$Delta[[1]])        # rows of Delta are distributions: all ones
+
+# The naive slope of Y1 on X is attenuated relative to the truth
+tb <- syn$tab[[1]]
+Pi_naive <- tapply(tb$n, list(tb$Y1, tb$X), sum)
+Pi_to_beta_inner(c(Pi_naive / sum(Pi_naive)), 1:3, 1:3, 1)
+Pi_to_beta_inner(c(syn$Pi[[1]]), 1:3, 1:3, 1)
 }
 \keyword{internal}

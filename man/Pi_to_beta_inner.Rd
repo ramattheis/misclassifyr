@@ -16,9 +16,18 @@ Pi_to_beta_inner(Pi, X_vals, Y_vals, W_weights)
 \item{W_weights}{A numeric vector representing the sample size of each control cell.}
 }
 \value{
-A scalar equal to beta.
+A scalar equal to beta, the slope of the population least-squares
+projection of \verb{Y*} on \code{X} implied by \code{Pi}.
 }
 \description{
 Maps the joint distribution, Pi, of X and Y* to a scalar, beta
+}
+\examples{
+# A perfectly diagonal joint distribution with values 1, 2, 3 on both
+# margins implies a slope of exactly one
+Pi_to_beta_inner(c(diag(3) / 3), X_vals = 1:3, Y_vals = 1:3, W_weights = 1)
+
+# Doubling the outcome scale doubles the slope
+Pi_to_beta_inner(c(diag(3) / 3), 1:3, 2 * (1:3), 1)
 }
 \keyword{internal}

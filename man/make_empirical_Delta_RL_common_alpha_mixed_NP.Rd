@@ -8,11 +8,37 @@
 make_empirical_Delta_RL_common_alpha_mixed_NP(tab, J)
 }
 \arguments{
-\item{tab}{tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names \code{Y1}, \code{Y2}, \code{X}, and \code{n} where \code{n} is a non-negative numeric vector corresponding to the counts of \code{Y1},\code{Y2}, and \code{X}. The rows should be ordered according to \code{order(Y2,Y1,X)}.}
+\item{tab}{A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names \code{Y1}, \code{Y2}, \code{X}, and \code{n} where \code{n} is a non-negative numeric vector corresponding to the counts of \code{Y1},\code{Y2}, and \code{X}. The rows should be ordered according to \code{order(Y2,Y1,X)}.}
+
+\item{J}{An integer or list corresponding to the number of unique values of \code{Y1} and \code{Y2}.}
 }
 \value{
-A list including 1. a function or a list of functions that map model parameters \code{psi} to the misclassification matrix \code{Delta}, 2. a vector or list of vectors corresponding to initial values of psi , and 3. a function or list of functions for the log prior of Delta in this model.
+A list with three elements ready to be handed to
+\code{\link[=misclassifyr]{misclassifyr()}}: \code{model_to_Delta}, a function (or list of functions,
+one per control cell) mapping model parameters \code{psi} to the
+misclassification matrix \code{Delta}; \code{psi_0}, a vector (or list of vectors)
+of starting values; and \code{log_prior_Delta}, a function (or list of
+functions) giving the log prior of \code{Delta} in this model.
 }
 \description{
 Creates a function for model_to_Delta based on a combination of RL structure errors and the empirical distribution of Y1 assuming RL errors are independent of Y* and non-parametric errors in Y2
+}
+\details{
+Use this design when one measure is a link (so its errors are
+well described by a single false-link rate against the empirical margin)
+and the other is not --- for example when \code{Y1} comes from a linked
+record and \code{Y2} is a self-report recoded by a different coding scheme,
+whose errors have no particular structure.
+}
+\examples{
+set.seed(1)
+syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 5000)
+design <- make_empirical_Delta_RL_common_alpha_mixed_NP(syn$tab[[1]], J = 3)
+
+# 1 false-link rate for Y1 + J * (J - 1) free parameters for Y2
+length(design$psi_0)
+
+D <- matrix(design$model_to_Delta(design$psi_0), nrow = 3)
+dim(D)
+rowSums(D)
 }

@@ -3,7 +3,13 @@
 #' Evaluates the log of the prior of \eqn{\Delta} at model_to_Delta_NP_ind(psi).
 #'
 #' @param psi A numeric vector parameterizing `Delta` through `model_to_Delta_NP_ind`.
-#' @return A numeric value equal to the log of the flat prior of `Delta` at `psi`, re-scaled for the logit transform.
+#' @return A numeric value equal to the log of the flat prior of `Delta` at
+#'   `psi`, re-scaled for the logit transform.
+#' @examples
+#' J <- 3
+#' log_prior_Delta_NP_ind(rep(0, 2 * J * (J - 1)))
+#' # The prior responds to both blocks of psi (Delta^(1) and Delta^(2))
+#' log_prior_Delta_NP_ind(c(rep(0, J * (J - 1)), rep(1, J * (J - 1))))
 #' @export
 log_prior_Delta_NP_ind = function(psi){
 

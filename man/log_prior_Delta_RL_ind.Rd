@@ -10,8 +10,15 @@ log_prior_Delta_RL_ind(psi)
 \item{psi}{A numeric vector parameterizing \code{Delta} through \code{model_to_Delta_RL_ind}.}
 }
 \value{
-A numeric value equal to the log of the flat prior of \code{Delta} at \code{psi}, re-scaled for the logit transform.
+A numeric value equal to the log of the flat prior of \code{Delta} at
+\code{psi}, re-scaled for the logit transform.
 }
 \description{
 Evaluates the log of the prior of Delta at model_to_Delta_RL_ind(psi).
+}
+\examples{
+J <- 3
+psi <- c(rep(0, J - 1), rep(0, J - 1),
+         rep(qlogis(0.2), J), rep(qlogis(0.2), J))
+log_prior_Delta_RL_ind(psi)
 }

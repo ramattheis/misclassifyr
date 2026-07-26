@@ -18,9 +18,17 @@ loglikelihood(theta, tab, J, K, lambda_dd)
 \item{lambda_dd}{A numeric value scaling a violations of diagonal dominance for Delta.}
 }
 \value{
-the log likelihood of the data given theta, i.e. Pi and Delta.
+A numeric value: the log likelihood of the data given \code{theta}
+(i.e. given \code{Pi} and \code{Delta}), less the diagonal-dominance penalty.
 }
 \description{
 Returns the log likelihood of the data.
+}
+\examples{
+set.seed(1)
+syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 1000)
+theta <- c(model_to_Pi_NP(rep(0, 8), J = 3),
+           model_to_Delta_NP_ind(rep(0, 12)))
+loglikelihood(theta, syn$tab[[1]], J = 3, K = 3, lambda_dd = 0)
 }
 \keyword{internal}

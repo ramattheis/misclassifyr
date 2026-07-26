@@ -100,15 +100,119 @@ misclassifyr(
 \item{gibbs_proposal_sd}{A numeric value giving the standard deviation for the proposal distribution in each Gibbs step.}
 
 \item{cores}{An integer for the number of CPUs available for parallel processing.}
-
-\item{split_eta}{An integer or list indicating where to split the vector \code{eta} in \code{phi} and \code{psi}, the arguments to \code{model_to_Pi} and \code{model_to_Delta} respectively.}
 }
 \value{
-A list containing the following components:
-\itemize{
-\item \verb{$Pi_hat_MLE}: The MLE estimate of the joint distribution of \eqn{X} and \eqn{Y^*}, \eqn{\Pi}.
+A list of 24 components. When control cells are used (\code{tab} is a
+list), every estimation component below is itself a list with one entry
+per control cell, named by \code{W_names}. Components belonging to an
+estimator that was not requested are returned as \code{NA}.
+
+Maximum likelihood output (\code{mle = TRUE}):
+\describe{
+\item{\code{Pi_hat_mle}}{The MLE of the joint distribution of \eqn{X} and
+\eqn{\Pi}, as a vector of length \code{J * K} holding a \code{J} by \code{K}
+matrix column-major (rows index \eqn{Y^*}, columns index \eqn{X}).}
+\item{\code{Delta_hat_mle}}{The MLE of the misclassification distribution
+\eqn{\Delta}, as a length-\code{J}^3 vector holding a \code{J} x \code{J}^2 matrix;
+column \code{(y2 - 1) * J + y1} of row \code{ystar} is
+\eqn{\Pr(Y_1 = y_1, Y_2 = y_2 \mid Y^* = ystar)}.}
+\item{\code{cov_Pi_mle}}{The \code{J * K} by \code{J * K} estimated covariance matrix
+of \code{Pi_hat_mle}, obtained by the delta method from the inverse
+Fisher information for the \code{Pi} block. Pass it to \code{\link[=Pi_to_beta]{Pi_to_beta()}}.}
+\item{\code{eta_hat_mle}}{The MLE in the unconstrained parameter space, the
+concatenation \code{c(phi, psi)} of the arguments to \code{model_to_Pi} and
+\code{model_to_Delta}.}
+\item{\code{log_likelihood_mle}}{The maximized log likelihood (including any
+diagonal-dominance penalty).}
+\item{\code{optim_counts}}{The function and gradient evaluation counts
+reported by \code{\link[stats:optim]{stats::optim()}}.}
+\item{\code{model_to_Pi_jacobian}}{The Jacobian of \code{model_to_Pi} evaluated
+at \code{eta_hat_mle}, used to form \code{cov_Pi_mle}.}
+\item{\code{eta_hessian_mle}}{The Hessian of the log likelihood in \code{eta}.
+Its negative is the observed information; near-zero eigenvalues flag
+flat directions (boundary solutions or weak identification).}
+\item{\code{fisher_info_err}}{A character string reporting whether the
+Fisher information for the \code{Pi} block was invertible. When it is not,
+a Moore-Penrose inverse is substituted and the analytical standard
+errors should not be trusted.}
+\item{\code{inconsistency_mle}}{The total absolute distance between the
+estimate from the default starting value and the estimates from
+perturbed starting values (one perturbation, or nine when
+\code{check_stability = TRUE}). Values above about 0.1 indicate that the
+likelihood has multiple optima.}
+}
+
+Posterior output (\code{bayesian = TRUE}):
+\describe{
+\item{\code{posterior_Pi}}{A data frame of post-burn-in posterior draws of
+\eqn{\Pi}, with columns \code{Pi_hat}, \code{X_name}, \code{Y_name}, \code{X_val},
+\code{Y_val} and \code{draw}.}
+\item{\code{posterior_Delta}}{The analogous data frame for \eqn{\Delta},
+with columns \code{Delta_hat}, \code{Ys_name}, \code{Y1_name}, \code{Y2_name}, the
+matching \verb{_val} columns and \code{draw}.}
+\item{\code{posterior_eta}}{A matrix of post-burn-in draws of the
+unconstrained parameter \code{eta}, one row per retained draw.}
+\item{\code{ll_history}}{A data frame with columns \code{ll} and \code{draw} recording
+the log posterior along the thinned chain, including burn-in. Pass it
+to \code{\link[=Pi_to_beta]{Pi_to_beta()}} to build the Chen-Christensen-Tamer confidence
+set.}
+\item{\code{accepted_proposals}}{The total number of accepted
+Metropolis-Hastings proposals across the whole chain.}
+\item{\code{trace_plots_eta}, \code{trace_plots_Pi}, \code{trace_plots_Delta}}{Named
+lists of \code{ggplot} trace plots, one per parameter, per cell of
+\eqn{\Pi} and per cell of \eqn{\Delta} (\code{NA} if
+\code{makeplots = FALSE}).}
+}
+
+Bookkeeping and figures:
+\describe{
+\item{\code{W_weights}}{The total count \code{sum(tab$n)} in the cell, used to
+weight control cells when aggregating.}
+\item{\code{misclassification_inputs}}{The inputs actually used, after
+defaults were filled in: \code{tab}, \code{J}, \code{K}, the name and value vectors,
+and the starting values \code{phi_0}, \code{psi_0}, \code{eta_0}.}
+\item{\code{Pi_hat_mle_plot}, \code{Delta_hat_mle_plot}}{\code{ggplot} heatmaps of the
+MLE of \eqn{\Pi} and of \eqn{\Pr(Y_1 \mid Y^*)} (\code{NA} if
+\code{makeplots = FALSE} or \code{mle = FALSE}).}
+\item{\code{Pi_hat_posterior_plot}, \code{Delta_hat_posterior_plot}}{The same
+heatmaps built from posterior means (\code{NA} if \code{makeplots = FALSE} or
+\code{bayesian = FALSE}).}
 }
 }
 \description{
 This function provides a menu of options for estimation and inference of misclassification models in which the analyst has access to two noisy measures, \code{Y1} and \code{Y2} of a latent outcome \verb{Y*}, a correctly measured covariate \code{X}, and discrete controls \code{W}.
+}
+\examples{
+# A three-category outcome measured twice, with record-linkage errors
+set.seed(1)
+syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 20000,
+                      dgp_delta = "Record Linkage, independent, 10 - 30\%")
+
+fit <- suppressMessages(misclassifyr(
+  tab = syn$tab[[1]], J = 3, K = 3,
+  X_names = as.character(1:3),
+  Y1_names = as.character(1:3),
+  Y2_names = as.character(1:3),
+  model_to_Delta = model_to_Delta_RL_ind,
+  X_vals = 1:3, Y_vals = 1:3,
+  mle = TRUE, bayesian = FALSE, makeplots = FALSE
+))
+
+# The estimated joint distribution of X and the latent outcome
+round(matrix(fit$Pi_hat_mle, nrow = 3), 3)
+round(syn$Pi[[1]], 3)                     # the truth
+
+# Diagnostics worth reading before believing anything
+fit$fisher_info_err
+fit$inconsistency_mle
+fit$log_likelihood_mle
+
+# The implied error rates: Pr(Y1 | Y*), marginalizing Delta over Y2
+marginalize <- do.call(rbind, replicate(3, diag(3), simplify = FALSE))
+round(matrix(fit$Delta_hat_mle, nrow = 3) \%*\% marginalize, 3)
+}
+\seealso{
+\code{\link[=prep_misclassification_data]{prep_misclassification_data()}} to build \code{tab}, \code{\link[=Pi_to_beta]{Pi_to_beta()}} to
+turn \code{Pi_hat_mle} into a regression coefficient, and
+\code{vignette("getting-started")}.
 }

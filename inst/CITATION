@@ -1,0 +1,22 @@
+bibentry(
+  bibtype  = "Manual",
+  header   = "To cite the misclassifyr package in publications, please cite both the paper and the software:",
+  title    = "misclassifyr: Estimation and Inference for Models of Misclassification",
+  author   = person("Ross", "Mattheis"),
+  year     = "2024",
+  note     = sprintf("R package version %s", meta$Version),
+  url      = "https://github.com/ramattheis/misclassifyr"
+)
+
+bibentry(
+  bibtype  = "Unpublished",
+  title    = "Misclassification Models for Linked Historical Records",
+  author   = person("Ross", "Mattheis"),
+  year     = "2024",
+  note     = "Working paper",
+  textVersion = paste(
+    "Mattheis, Ross (2024).",
+    "Misclassification Models for Linked Historical Records.",
+    "Working paper."
+  )
+)

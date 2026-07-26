@@ -4,7 +4,15 @@
 #' @param X_vals A numeric vector or a list of numeric vectors representing the scalar values associated with X.
 #' @param Y_vals A numeric vector or a list of numeric vectors representing the scalar values associated with Y.
 #' @param W_weights A numeric vector representing the sample size of each control cell.
-#' @return A scalar equal to beta.
+#' @return A scalar equal to beta, the slope of the population least-squares
+#'   projection of `Y*` on `X` implied by `Pi`.
+#' @examples
+#' # A perfectly diagonal joint distribution with values 1, 2, 3 on both
+#' # margins implies a slope of exactly one
+#' Pi_to_beta_inner(c(diag(3) / 3), X_vals = 1:3, Y_vals = 1:3, W_weights = 1)
+#'
+#' # Doubling the outcome scale doubles the slope
+#' Pi_to_beta_inner(c(diag(3) / 3), 1:3, 2 * (1:3), 1)
 #' @keywords internal
 #' @export
 Pi_to_beta_inner = function(Pi, X_vals, Y_vals, W_weights){

@@ -10,8 +10,13 @@ log_prior_Pi_NP(phi)
 \item{phi}{A numeric vector parameterizing \code{Pi} through \code{model_to_Pi}.}
 }
 \value{
-A numeric value equal to the log of the flat prior of \code{Pi} at \code{phi}, re-scaled for the logit transform.
+A numeric value equal to the log of the flat prior of \code{Pi} at \code{phi},
+re-scaled for the logit transform.
 }
 \description{
 Evaluates the log of the prior of Pi at model_to_Pi_NP(phi).
+}
+\examples{
+# A 3 x 3 joint distribution has 3 * 3 - 1 = 8 free parameters
+log_prior_Pi_NP(rep(0, 8))
 }

@@ -5,7 +5,14 @@
 #' @param J An integer or list corresponding to the number of unique values of `Y1` and `Y2`.
 #' @param K An integer or list corresponding to the number of unique values of `X`.
 #' @param lambda_dd A numeric value scaling a violations of diagonal dominance for Delta.
-#' @return the log likelihood of the data given theta, i.e. Pi and Delta.
+#' @return A numeric value: the log likelihood of the data given `theta`
+#'   (i.e. given `Pi` and `Delta`), less the diagonal-dominance penalty.
+#' @examples
+#' set.seed(1)
+#' syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 1000)
+#' theta <- c(model_to_Pi_NP(rep(0, 8), J = 3),
+#'            model_to_Delta_NP_ind(rep(0, 12)))
+#' loglikelihood(theta, syn$tab[[1]], J = 3, K = 3, lambda_dd = 0)
 #' @keywords internal
 #' @export
 loglikelihood = function(theta,tab,J,K,lambda_dd){

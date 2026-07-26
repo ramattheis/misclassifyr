@@ -10,8 +10,15 @@ log_prior_Delta_NP(psi)
 \item{psi}{A numeric vector parameterizing \code{Delta} through \code{model_to_Delta_NP}.}
 }
 \value{
-A numeric value equal to the log of the flat prior of \code{Delta} at \code{psi}, re-scaled for the logit transform.
+A numeric value equal to the log of the flat prior of \code{Delta} at
+\code{psi}, re-scaled for the logit transform.
 }
 \description{
 Evaluates the log of the prior of Delta at model_to_Delta_NP(psi).
+}
+\examples{
+# J = 2: 4 free parameters. The prior is highest near psi = 0, where the
+# logit transform is least compressive.
+log_prior_Delta_NP(rep(0, 4))
+log_prior_Delta_NP(rep(3, 4))
 }

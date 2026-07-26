@@ -7,7 +7,13 @@
 #' @param X_vals A numeric vector or a list of numeric vectors representing the scalar values associated with X.
 #' @param Y_vals A numeric vector or a list of numeric vectors representing the scalar values associated with Y.
 #' @param W_weights A numeric vector representing the sample size of each control cell.
-#' @return A scalar equal to the standard error of beta.
+#' @return A scalar equal to the delta-method standard error of beta.
+#' @examples
+#' Pi <- c(diag(3) / 3)
+#' # No sampling uncertainty in Pi implies no uncertainty in beta
+#' se_beta_deltamethod(Pi, matrix(0, 9, 9), 1:3, 1:3, 1)
+#' # A small isotropic covariance for Pi propagates to a positive SE
+#' se_beta_deltamethod(Pi, diag(1e-4, 9), 1:3, 1:3, 1)
 #' @keywords internal
 #' @export
 se_beta_deltamethod = function(Pi, cov_Pi, X_vals, Y_vals, W_weights){
@@ -48,10 +54,12 @@ se_beta_deltamethod = function(Pi, cov_Pi, X_vals, Y_vals, W_weights){
     # If Pi is not a list, computing the standard error directly via the delta method
 
     # Defining a wrapper for the Pi_to_beta_inner function to compute the gradient
-    Pi_to_beta_inner_wrapper = function(Pi_){ return(Pi_to_beta_inner(Pi_,X_vals,Y_vals,1)) }
+    # (named distinctly from the list-branch wrapper above: R CMD check flags two
+    # local definitions of the same name with different formals)
+    Pi_to_beta_inner_wrapper_single = function(Pi_){ return(Pi_to_beta_inner(Pi_,X_vals,Y_vals,1)) }
 
     # Computing the gradient of beta with respect to Pi
-    grad_Pi_to_beta_inner = numDeriv::grad(Pi_to_beta_inner_wrapper, Pi)
+    grad_Pi_to_beta_inner = numDeriv::grad(Pi_to_beta_inner_wrapper_single, Pi)
 
     # Computing the variance of beta via the delta method
     var_beta = t(grad_Pi_to_beta_inner) %*% cov_Pi %*% grad_Pi_to_beta_inner

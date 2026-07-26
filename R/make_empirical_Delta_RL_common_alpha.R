@@ -1,7 +1,25 @@
 #' Creates a function for model_to_Delta based on RL structure errors and the empirical distribution of Y1 and Y2 assuming RL errors are independent of Y*
 #'
-#' @param tab tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names `Y1`, `Y2`, `X`, and `n` where `n` is a non-negative numeric vector corresponding to the counts of `Y1`,`Y2`, and `X`. The rows should be ordered according to `order(Y2,Y1,X)`.
-#' @return A list including 1. a function or a list of functions that map model parameters `psi` to the misclassification matrix `Delta`, 2. a vector or list of vectors corresponding to initial values of psi , and 3. a function or list of functions for the log prior of Delta in this model.
+#' @param tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names `Y1`, `Y2`, `X`, and `n` where `n` is a non-negative numeric vector corresponding to the counts of `Y1`,`Y2`, and `X`. The rows should be ordered according to `order(Y2,Y1,X)`.
+#' @return A list with three elements ready to be handed to
+#'   [misclassifyr()]: `model_to_Delta`, a function (or list of functions,
+#'   one per control cell) mapping the two-element parameter `psi` to the
+#'   misclassification matrix `Delta`; `psi_0`, a vector (or list of vectors)
+#'   of starting values; and `log_prior_Delta`, a function (or list of
+#'   functions) giving the log prior of `Delta` in this model.
+#' @examples
+#' set.seed(1)
+#' syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 5000,
+#'                       dgp_delta = "Record Linkage, independent, 10 - 30%")
+#' design <- make_empirical_Delta_RL_common_alpha(syn$tab[[1]])
+#'
+#' # Exactly two parameters: one false-link rate per measure
+#' design$psi_0
+#'
+#' # Verify the design at a 20% / 30% false-link rate
+#' D <- matrix(design$model_to_Delta(qlogis(c(0.2, 0.3))), nrow = 3)
+#' dim(D)
+#' rowSums(D)
 #' @export
 make_empirical_Delta_RL_common_alpha = function(tab){
 

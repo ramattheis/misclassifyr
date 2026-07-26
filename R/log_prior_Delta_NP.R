@@ -1,7 +1,13 @@
 #' Evaluates the log of the prior of Delta at model_to_Delta_NP(psi).
 #'
 #' @param psi A numeric vector parameterizing `Delta` through `model_to_Delta_NP`.
-#' @return A numeric value equal to the log of the flat prior of `Delta` at `psi`, re-scaled for the logit transform.
+#' @return A numeric value equal to the log of the flat prior of `Delta` at
+#'   `psi`, re-scaled for the logit transform.
+#' @examples
+#' # J = 2: 4 free parameters. The prior is highest near psi = 0, where the
+#' # logit transform is least compressive.
+#' log_prior_Delta_NP(rep(0, 4))
+#' log_prior_Delta_NP(rep(3, 4))
 #' @export
 log_prior_Delta_NP = function(psi){
 

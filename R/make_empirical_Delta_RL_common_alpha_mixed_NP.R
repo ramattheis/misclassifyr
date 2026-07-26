@@ -1,7 +1,29 @@
 #' Creates a function for model_to_Delta based on a combination of RL structure errors and the empirical distribution of Y1 assuming RL errors are independent of Y* and non-parametric errors in Y2
 #'
-#' @param tab tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names `Y1`, `Y2`, `X`, and `n` where `n` is a non-negative numeric vector corresponding to the counts of `Y1`,`Y2`, and `X`. The rows should be ordered according to `order(Y2,Y1,X)`.
-#' @return A list including 1. a function or a list of functions that map model parameters `psi` to the misclassification matrix `Delta`, 2. a vector or list of vectors corresponding to initial values of psi , and 3. a function or list of functions for the log prior of Delta in this model.
+#' @param tab A dataframe or a list of dataframes containing tabulated data or a list of tabulated data split by controls. The columns should have names `Y1`, `Y2`, `X`, and `n` where `n` is a non-negative numeric vector corresponding to the counts of `Y1`,`Y2`, and `X`. The rows should be ordered according to `order(Y2,Y1,X)`.
+#' @param J An integer or list corresponding to the number of unique values of `Y1` and `Y2`.
+#' @return A list with three elements ready to be handed to
+#'   [misclassifyr()]: `model_to_Delta`, a function (or list of functions,
+#'   one per control cell) mapping model parameters `psi` to the
+#'   misclassification matrix `Delta`; `psi_0`, a vector (or list of vectors)
+#'   of starting values; and `log_prior_Delta`, a function (or list of
+#'   functions) giving the log prior of `Delta` in this model.
+#' @details Use this design when one measure is a link (so its errors are
+#'   well described by a single false-link rate against the empirical margin)
+#'   and the other is not --- for example when `Y1` comes from a linked
+#'   record and `Y2` is a self-report recoded by a different coding scheme,
+#'   whose errors have no particular structure.
+#' @examples
+#' set.seed(1)
+#' syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 5000)
+#' design <- make_empirical_Delta_RL_common_alpha_mixed_NP(syn$tab[[1]], J = 3)
+#'
+#' # 1 false-link rate for Y1 + J * (J - 1) free parameters for Y2
+#' length(design$psi_0)
+#'
+#' D <- matrix(design$model_to_Delta(design$psi_0), nrow = 3)
+#' dim(D)
+#' rowSums(D)
 #' @export
 make_empirical_Delta_RL_common_alpha_mixed_NP = function(tab,J){
 
@@ -129,8 +151,11 @@ make_empirical_Delta_RL_common_alpha_mixed_NP = function(tab,J){
     # Initial value of Delta2 is RL errors with 20% linkage error
     Delta2 =  diag(J)*(1 - 0.2) + outer(rep(1 / J, J), rep(0.2, J), "*")
 
-    # Transform to probabilities to logs
-    Delta2 = c(apply(Delta2, 2, function(col) { softlog(col / col[length(col)]) }))
+    # Transform to probabilities to logs. (The `c()` that used to wrap this
+    # apply() flattened Delta2 to a vector, so the row-drop below errored with
+    # "incorrect number of dimensions"; the list branch above is the reference
+    # implementation and does not flatten here.)
+    Delta2 = apply(Delta2, 2, function(col) { softlog(col / col[length(col)]) })
 
     # Removing the reference column and flattening to a vector
     psi2 = c(Delta2[-J,])

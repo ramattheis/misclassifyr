@@ -49,7 +49,10 @@ test_that("misclassifyr returns identical MLEs on dense and sparse tabs", {
   out_s = suppressWarnings(suppressMessages(
     do.call(misclassifyr, c(list(tab = sp), args))))
   expect_equal(out_d$Pi_hat_mle, out_s$Pi_hat_mle, tolerance = 1e-8)
-  expect_equal(out_d$Delta1_hat_mle, out_s$Delta1_hat_mle, tolerance = 1e-8)
+  # misclassifyr() returns `Delta_hat_mle`, not `Delta1_hat_mle`; comparing the
+  # latter compared NULL to NULL and passed without testing anything.
+  expect_false(is.null(out_d$Delta_hat_mle))
+  expect_equal(out_d$Delta_hat_mle, out_s$Delta_hat_mle, tolerance = 1e-8)
 })
 
 test_that("lambda_dd argument is respected", {

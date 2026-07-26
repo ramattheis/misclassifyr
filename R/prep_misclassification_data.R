@@ -19,7 +19,57 @@
 #' @param record_vals A logical value indicating whether to record the unique values of the outcomes and the regressor. If record_vals = F, you likely want to order the data by the regressor and outcomes before applying prep_misclassification_data.
 #' @param round_vals An integer indicating the precision with which to round the names associated with values of the regressor, outcome, and instrument. Default is 2.
 #' @param sparse A logical value. If TRUE, the returned tabulation keeps only observed (positive-count) cells and adds a `cell_idx` column giving each cell's position in the balanced (Y2, Y1, X)-ordered layout. Use for high-dimensional outcomes where the balanced table (J^2 x K rows) is impractically large; misclassifyr() accepts either form and returns identical estimates.
-#' @return A list of objects including tabulated data to be used in misclassifyr()
+#' @return A list to be handed to [misclassifyr()], containing `tab` (the
+#'   tabulation, or a list of tabulations split by control cell), the
+#'   dimensions `J` and `K`, the category labels `X_names`, `Y1_names`,
+#'   `Y2_names` and `W_names`, and --- when `record_vals = TRUE` --- the
+#'   numeric scores `X_vals` and `Y_vals` attached to each category, which
+#'   [Pi_to_beta()] needs to turn the estimated joint distribution into a
+#'   regression coefficient.
+#' @examples
+#' data(ancienregime)
+#' occ <- c("Vagabond", "Metayer", "Journalier",
+#'          "Petit Metiers", "Petite Bourgeoisie", "Haute Bourgeoisie")
+#'
+#' # Categorical outcome: the son's occupation, measured twice
+#' inputs <- prep_misclassification_data(
+#'   data = ancienregime,
+#'   outcome_1 = "son_occupation_1780",
+#'   outcome_2 = "son_occupation_1770",
+#'   regressor = "father_occupation_1750",
+#'   X_names = occ, Y1_names = occ, Y2_names = occ,
+#'   weights = "linked_weight"
+#' )
+#' inputs$J
+#' inputs$K
+#' nrow(inputs$tab)          # a balanced J^2 * K table
+#' head(inputs$tab)
+#'
+#' # Continuous outcome binned by occupation, with the within-bin mean income
+#' # recorded as the score for each category
+#' inputs_cts <- prep_misclassification_data(
+#'   data = ancienregime,
+#'   outcome_1 = "son_income_1780",
+#'   outcome_2 = "son_income_1770",
+#'   regressor = "father_income_1750",
+#'   outcome_1_bin = "son_occupation_1780",
+#'   outcome_2_bin = "son_occupation_1770",
+#'   regressor_bin = "father_occupation_1750",
+#'   weights = "linked_weight",
+#'   record_vals = TRUE, round_vals = 0
+#' )
+#' round(inputs_cts$Y_vals)
+#'
+#' # Sparse mode keeps only the cells that actually occur
+#' sp <- prep_misclassification_data(
+#'   data = ancienregime,
+#'   outcome_1 = "son_occupation_1780",
+#'   outcome_2 = "son_occupation_1770",
+#'   regressor = "father_occupation_1750",
+#'   X_names = occ, Y1_names = occ, Y2_names = occ,
+#'   weights = "linked_weight", sparse = TRUE
+#' )
+#' nrow(sp$tab)
 #' @export
 prep_misclassification_data <- function(
     data,

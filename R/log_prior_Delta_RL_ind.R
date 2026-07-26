@@ -1,7 +1,13 @@
 #' Evaluates the log of the prior of Delta at model_to_Delta_RL_ind(psi).
 #'
 #' @param psi A numeric vector parameterizing `Delta` through `model_to_Delta_RL_ind`.
-#' @return A numeric value equal to the log of the flat prior of `Delta` at `psi`, re-scaled for the logit transform.
+#' @return A numeric value equal to the log of the flat prior of `Delta` at
+#'   `psi`, re-scaled for the logit transform.
+#' @examples
+#' J <- 3
+#' psi <- c(rep(0, J - 1), rep(0, J - 1),
+#'          rep(qlogis(0.2), J), rep(qlogis(0.2), J))
+#' log_prior_Delta_RL_ind(psi)
 #' @export
 log_prior_Delta_RL_ind = function(psi){
 

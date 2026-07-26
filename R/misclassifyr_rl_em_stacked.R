@@ -24,7 +24,34 @@
 #' @param alpha_fixed Optional length-2 vector fixing (alpha1, alpha2).
 #' @param alpha_0,tol,maxit,verbose As in `misclassifyr_rl_em`.
 #' @return A list: `alpha` (shared), `cells` (per-cell lists with `rho1`,
-#'   `rho2`, `Pi`), `loglik`, `loglik_trace`, `n_iter`, `converged`.
+#'   `rho2`, `Pi`, `N`), `loglik`, `loglik_trace`, `n_iter`, `converged`.
+#' @seealso [misclassifyr_rl_em()] for the single-tabulation version, and
+#'   `vignette("designing-misclassification-models")` for when to stack.
+#' @examples
+#' # Four birthplace cells; a failed link draws a phantom from within the
+#' # SAME cell, because the linking algorithm matched on birthplace.
+#' set.seed(41)
+#' C <- 4; J <- 20; N <- 40000; alpha <- 0.25
+#' cell <- sample.int(C, N, replace = TRUE)
+#' base <- (cell - 1) * 5
+#' xi <- base + sample.int(5, N, replace = TRUE)
+#' j  <- ifelse(runif(N) < 0.8, xi, base + sample.int(5, N, replace = TRUE))
+#' y1 <- ifelse(runif(N) < alpha, base + sample.int(5, N, replace = TRUE), j)
+#' y2 <- ifelse(runif(N) < alpha, base + sample.int(5, N, replace = TRUE), j)
+#' df <- data.frame(cell = cell, X = xi, Y1 = y1, Y2 = y2)
+#'
+#' tabs <- lapply(split(df, df$cell), function(d)
+#'   aggregate(list(n = rep(1, nrow(d))),
+#'             by = list(X = d$X, Y1 = d$Y1, Y2 = d$Y2), FUN = sum))
+#'
+#' stacked <- misclassifyr_rl_em_stacked(tabs, J = J, K = J)
+#' stacked$alpha   # close to (0.25, 0.25)
+#'
+#' # Pooling the cells and using the unconditional margin as the phantom
+#' # distribution biases alpha downward
+#' pooled_tab <- aggregate(list(n = rep(1, N)),
+#'                         by = list(X = df$X, Y1 = df$Y1, Y2 = df$Y2), FUN = sum)
+#' misclassifyr_rl_em(pooled_tab, J = J, K = J)$alpha
 #' @export
 misclassifyr_rl_em_stacked = function(tabs, J, K,
                                       T2 = NULL,

@@ -12,8 +12,29 @@ make_empirical_Delta_RL(tab, J)
 \item{J}{An integer or list corresponding to the number of unique values of \code{Y1} and \code{Y2}.}
 }
 \value{
-A list including 1. a function or a list of functions that map model parameters \code{psi} to the misclassification matrix \code{Delta}, 2. a vector or list of vectors corresponding to initial values of psi , and 3. a function or list of functions for the log prior of Delta in this model.
+A list with three elements ready to be handed to
+\code{\link[=misclassifyr]{misclassifyr()}}: \code{model_to_Delta}, a function (or list of functions,
+one per control cell) mapping model parameters \code{psi} to the
+misclassification matrix \code{Delta}; \code{psi_0}, a vector (or list of vectors)
+of starting values; and \code{log_prior_Delta}, a function (or list of
+functions) giving the log prior of \code{Delta} in this model.
 }
 \description{
 Creates a function for model_to_Delta based on RL structure errors and the empirical distribution of Y1 and Y2
+}
+\examples{
+set.seed(1)
+syn <- synthetic_data(J = 3, K = 3, I = 1, sample_size = 5000,
+                      dgp_delta = "Record Linkage, independent, 10 - 30\%")
+design <- make_empirical_Delta_RL(syn$tab[[1]], J = 3)
+
+# 2 * J false-link rates (one per category, per measure); psi_0 starts them
+# all near plogis(-2) = 0.12
+length(design$psi_0)
+
+# Verify the design: J x J^2 with rows summing to one
+D <- matrix(design$model_to_Delta(design$psi_0), nrow = 3)
+dim(D)
+rowSums(D)
+design$log_prior_Delta(design$psi_0)
 }

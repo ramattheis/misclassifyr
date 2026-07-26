@@ -1,0 +1,325 @@
+---
+title: "Getting started: correcting an estimate for linkage error"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started: correcting an estimate for linkage error}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE,
+                      fig.width = 6, fig.height = 4)
+library(misclassifyr)
+```
+
+## The problem
+
+You have linked historical records: fathers to sons, censuses to censuses,
+draft cards to death certificates. You link them with a name-matching
+algorithm, you get a linked sample, and you run a regression on it.
+
+Some of those links are wrong. Not many, perhaps — 10%, 20% — but wrong. And
+a wrong link does not put a random number in your outcome column; it puts
+*somebody else's* outcome there. Somebody else drawn, roughly, from the pool
+of people whose names looked similar.
+
+The consequence for your regression is not subtle. Suppose you regress a
+son's income on his father's income to estimate intergenerational
+persistence. When a son is mis-linked, his recorded income is really a
+stranger's income, which is uncorrelated with *this* father's income. The
+slope you estimate is a mixture of the true slope (for correctly linked
+pairs) and zero (for the rest). You get attenuation, and the size of the
+attenuation is roughly the false-link rate. A 20% link error rate knocks 20%
+off your estimate of social mobility's opposite.
+
+The usual fixes are unsatisfying. You can tighten the linking algorithm,
+which trades link errors for selection bias. You can bound the damage under
+worst-case assumptions, which is honest but wide. Or you can *model* the
+error, estimate its distribution from the data, and correct the estimate.
+That is what this package does.
+
+## What you need: two noisy measures
+
+The one non-negotiable requirement is that the outcome be measured **twice**.
+
+Here is why, without any econometrics. With a single measure you cannot tell
+a genuinely poor son from a rich son whose record was mis-linked to a poor
+stranger. Both appear as "poor" in your data, and nothing in the data
+separates them. Add a second measure of the same underlying outcome — the
+son observed again in a later census, say — and the separation becomes
+possible. When the two measures agree, the value is probably right. When
+they disagree, at least one is wrong. *How often* they disagree, and *in
+which direction*, is exactly the information you need to pin down the error
+rates.
+
+Once you know the error rates, you can undo them: the distribution you
+actually observe is the true distribution passed through a known
+"smearing" matrix, and you invert the smearing.
+
+Three conditions make this work.
+
+1. **Two measures.** Call them `Y1` and `Y2`. They must be measures of the
+   same latent outcome `Y*`.
+2. **Conditionally independent errors.** Given the truth, the two measures
+   must err independently. Two transcriptions by the same clerk from the
+   same page are *not* two measures — they share their mistakes. Two
+   different censuses, or a linked record and an independently collected
+   self-report, usually are.
+3. **Errors unrelated to the regressor.** Given the truth, the errors must
+   not depend on `X`. If the linking algorithm is worse for poor families
+   than rich ones, condition on family status using the `controls` argument
+   so that this holds within each control cell.
+
+There is a fourth condition that is more of a normalization: the modal
+report is the truth. Most sons are recorded correctly. Without this the
+model cannot tell which of two candidate solutions is the "true" outcome and
+which is the error, and the package would happily hand you the relabeled
+one.
+
+## The data
+
+The package ships a synthetic dataset, `ancienregime`: 100,000 father–son
+pairs in Third Estate France, linked across three censuses (that never
+happened) in 1750, 1770, and 1780. The son's occupation and income score are
+recorded **twice**, in 1770 and again in 1780, which supplies the two
+measures.
+
+```{r data}
+data(ancienregime)
+str(ancienregime)
+```
+
+The two measures of the son disagree for a substantial share of pairs:
+
+```{r disagree}
+mean(ancienregime$son_occupation_1770 != ancienregime$son_occupation_1780)
+```
+
+That disagreement is not a nuisance. It is the identifying variation.
+
+## Step 1: tabulate
+
+`misclassifyr` works from a tabulation, not from microdata. The estimator
+only ever touches the counts of each `(X, Y1, Y2)` cell, so
+`prep_misclassification_data()` builds that table and records the
+bookkeeping the estimator needs — how many categories, what they are called,
+and what numeric score each category carries.
+
+Occupation is categorical, but we want a regression coefficient in income
+units. The `_bin` arguments handle exactly this: bin the continuous income
+variable by occupation, and record the within-bin mean income as the numeric
+score for each category.
+
+```{r prep}
+inputs <- prep_misclassification_data(
+  data          = ancienregime,
+  outcome_1     = "son_income_1780",
+  outcome_2     = "son_income_1770",
+  regressor     = "father_income_1750",
+  outcome_1_bin = "son_occupation_1780",
+  outcome_2_bin = "son_occupation_1770",
+  regressor_bin = "father_occupation_1750",
+  weights       = "linked_weight",
+  record_vals   = TRUE,
+  round_vals    = 0
+)
+
+c(J = inputs$J, K = inputs$K)     # categories of the outcome and the regressor
+nrow(inputs$tab)                  # a balanced J^2 * K table
+head(inputs$tab)
+round(inputs$Y_vals)              # mean income within each occupation
+```
+
+`J` is the number of outcome categories, `K` the number of regressor
+categories, and the tabulation has `J^2 * K = 216` rows: one for every
+combination of the father's occupation and the two recorded occupations of
+the son.
+
+## Step 2: estimate the misclassification model
+
+`misclassifyr()` maximizes the likelihood of that tabulation over two
+objects at once:
+
+- $\Pi$, the joint distribution of the regressor $X$ and the **latent**
+  outcome $Y^*$ — the thing you actually want; and
+- $\Delta$, the distribution of the two recorded values given the truth,
+  $\Pr(Y_1, Y_2 \mid Y^*)$ — the smearing matrix.
+
+You choose the shape of $\Delta$ through the `model_to_Delta` argument. Here
+we use `model_to_Delta_RL_ind`, the record-linkage model: with probability
+$1 - \alpha$ the link is correct and the recorded occupation is the true
+one; with probability $\alpha$ the link failed and the recorded occupation
+is an independent draw from a distribution $\rho$ over occupations. That is
+a natural description of name-matching failure, and it costs only $4J - 2$
+parameters rather than the $2J(J-1)$ of an unrestricted model.
+
+```{r fit}
+set.seed(1)   # the stability check below perturbs starting values
+fit <- misclassifyr(
+  tab            = inputs$tab,
+  J              = inputs$J,
+  K              = inputs$K,
+  X_names        = inputs$X_names,
+  Y1_names       = inputs$Y1_names,
+  Y2_names       = inputs$Y2_names,
+  X_vals         = inputs$X_vals,
+  Y_vals         = inputs$Y_vals,
+  model_to_Delta = model_to_Delta_RL_ind,
+  mle            = TRUE,
+  bayesian       = FALSE,
+  makeplots      = FALSE
+)
+```
+
+## Step 3: read the output
+
+`misclassifyr()` returns a long list. Four pieces matter most.
+
+**The estimated joint distribution.** `Pi_hat_mle` is a length-`J*K` vector
+holding the `J` by `K` matrix column-major: rows are the latent outcome,
+columns the regressor.
+
+The categories are labelled by their mean income, since that is what we
+binned on; they are the six occupations, in ascending order of income.
+
+```{r pi}
+occ <- c("Vagabond", "Metayer", "Journalier",
+         "Petit Metiers", "Petite Bourgeoisie", "Haute Bourgeoisie")
+
+Pi_hat <- matrix(fit$Pi_hat_mle, nrow = inputs$J,
+                 dimnames = list(`Son (latent)` = occ, Father = occ))
+round(Pi_hat, 3)
+```
+
+**The estimated error rates.** `Delta_hat_mle` holds the `J` by `J^2` joint
+distribution of both measures given the truth. To read off the more
+intuitive object — $\Pr(Y_1 \mid Y^*)$, the chance a son whose true
+occupation is $j$ is recorded as $k$ in 1780 — marginalize over the second
+measure:
+
+```{r delta}
+marginalize <- do.call(rbind, replicate(inputs$J, diag(inputs$J), simplify = FALSE))
+Delta1 <- matrix(fit$Delta_hat_mle, nrow = inputs$J) %*% marginalize
+dimnames(Delta1) <- list(Truth = occ, `Recorded 1780` = occ)
+round(Delta1, 3)
+```
+
+Careful with the orientation: **rows are the truth**, so row $j$ is the
+distribution of what gets *recorded* for a son whose occupation really is
+$j$. The diagonal is the probability of being recorded correctly, and one
+minus the diagonal is the implied error rate:
+
+```{r alpha}
+round(1 - diag(Delta1), 3)   # implied error rate by true occupation
+```
+
+These are worth staring at. They are not uniform — the model says the
+lowest-status category is recorded correctly far less often than the
+middling ones, which is what you would expect if vagabonds are hard to
+find, hard to link, and easy to confuse with day labourers. If instead they
+had come back implausible (60% error where the linkage literature reports
+10%, or a rate of zero) that would be evidence against the shape of
+$\Delta$ you chose, not a result.
+
+**Two diagnostics you should always look at.**
+
+```{r diag}
+fit$fisher_info_err      # was the information matrix invertible?
+
+c(elements_of_theta = inputs$J * inputs$K + inputs$J^3,
+  inconsistency     = fit$inconsistency_mle)
+```
+
+The first tells you whether analytical standard errors are trustworthy;
+here they are.
+
+The second re-runs the optimizer from a perturbed starting value and reports
+the *total* absolute distance between the two answers, summed over every
+element of $\Pi$ and $\Delta$. `misclassifyr()` warns above 0.1, which is a
+blunt threshold: it does not scale with the size of the model, and this
+model has 252 elements. Per element the discrepancy is around 0.003, small
+enough to be convergence slop rather than a second optimum. Still, a fired
+warning is a prompt to check whether the number you care about is actually
+sensitive to it, and `vignette("inference")` shows how to tell — and what to
+do when it genuinely is.
+
+## Step 4: turn $\Pi$ into a regression coefficient
+
+`Pi_to_beta()` computes the slope of the population least-squares projection
+of $Y^*$ on $X$ implied by the estimated joint distribution, together with a
+delta-method standard error.
+
+```{r beta}
+corrected <- Pi_to_beta(
+  X_vals  = inputs$X_vals,
+  Y_vals  = inputs$Y_vals,
+  mle     = TRUE,
+  Pi_mle  = fit$Pi_hat_mle,
+  cov_Pi  = fit$cov_Pi_mle
+)
+
+c(beta = unname(corrected$beta_hat_mle),
+  se   = unname(corrected$se_beta_mle))
+```
+
+## Does the correction bite?
+
+Compare against what you would have reported without it. The cleanest
+comparison holds the discretization fixed and simply *skips* the correction:
+take the observed joint distribution of the 1780 measure and the father's
+occupation and compute the same slope from it.
+
+```{r naive}
+tab <- inputs$tab
+
+naive_from <- function(measure) {
+  P <- tapply(tab$n, list(tab[[measure]], tab$X), sum)
+  Pi_to_beta_inner(c(P / sum(P)), inputs$X_vals, inputs$Y_vals, 1)
+}
+
+results <- data.frame(
+  estimate = c("Naive, 1780 measure",
+               "Naive, 1770 measure",
+               "Individual-level OLS",
+               "Misclassification-corrected"),
+  beta = c(naive_from("Y1"),
+           naive_from("Y2"),
+           unname(coef(lm(son_income_1780 ~ father_income_1750,
+                          data = ancienregime,
+                          weights = ancienregime$linked_weight))[2]),
+           unname(corrected$beta_hat_mle))
+)
+results$ratio_to_corrected <- results$beta / unname(corrected$beta_hat_mle)
+knitr::kable(results, digits = 3)
+```
+
+The naive estimates come in 13% to 19% below the corrected one, which is the
+order of magnitude the estimated error rates above imply. Reported as an
+intergenerational elasticity in a paper, that gap is the difference between
+a society you would describe as fairly mobile and one you would describe as
+notably less so — from the same data, with the same linking algorithm.
+
+Note also that the two naive estimates disagree with each other (0.59 versus
+0.63). They are estimates of the same quantity from the same sample; the gap
+between them is measurement error making itself visible. When your results
+move depending on which of two equivalent measures you happen to use, that
+is a signal to model the error rather than pick a favourite.
+
+## Where to go next
+
+- **`vignette("designing-misclassification-models")`** — the important one.
+  The record-linkage model used above is one shape of $\Delta$ among many,
+  and it will not describe *your* errors. This vignette shows how to
+  enumerate the error channels in your own setting, turn them into a
+  parameterized $\Delta$, write it as an R closure, and verify it. It also
+  covers using a large language model as a drafting assistant, and how to
+  check what it hands you.
+- **`vignette("sparse-and-large")`** — when the outcome has hundreds or
+  thousands of categories (counties, detailed occupation codes) the balanced
+  tabulation above becomes impossible and the general estimator too slow.
+  Sparse tabulations and a dedicated expectation-maximization estimator
+  handle it.
+- **`vignette("inference")`** — delta-method standard errors, what a
+  singular information matrix means, and Monte Carlo confidence sets that
+  remain valid when the model is only partially identified.
