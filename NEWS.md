@@ -24,6 +24,31 @@ First release prepared for CRAN. Everything below is new since 0.2.3.
   link come from the candidate pool matching the linking keys, not the
   unconditional marginal. An unconditional slab that is too diffuse makes
   false links look correct and biases `alpha` downward.
+* `misclassifyr_traj_em()`: the trajectory EM for multi-link bundles, and
+  the estimator behind the three-link design. A unit contributes an anchor
+  measure observed directly, optionally a second anchor measure reached by a
+  link of its own, and `k` linked measures of a second person whose latent
+  state follows a Markov chain `T`. It relaxes the two assumptions the
+  rank-one model in `misclassifyr_rl_em()` makes about failed links. First,
+  failures are *structured*: each unit has one latent rival, and with
+  probability `s` every failed link lands on that same rival, whose own
+  state follows `T` — which is why two false links agree far more often
+  than the rank-one model allows, and why `s` needs `k >= 3` (at `k = 2`
+  `alpha` and `s` trade off along a ridge). Second, the recorded category
+  need not be the true one: every observed value passes through
+  `(1 - mu) I + mu K` for a supplied confusion kernel `K`, with `mu`
+  allowed to vary by census year. `Pi`, `T`, `mu`, the false-link rates and
+  the shared share are estimated jointly, and every M-step is a closed-form
+  count ratio — no Newton step anywhere — provided the phantom laws `rho`
+  are supplied as data rather than rebuilt from `T` each iteration.
+  Freezes (`alpha_fixed` with `s_fixed`, `pi_shared_fixed`, `mu_fixed`,
+  `T_fixed`, `Pi_fixed`, `alpha_f_fixed`) make each staged hand-off the
+  same function restricted, and `pi_shared_fixed` is the profiling handle
+  for `s`. A missing measure is coded `NA` (or `0`) and handled as a
+  missing emission: the unit contributes the branches its observed pattern
+  supports. Do not model it as an extra latent state — a high-mass
+  "not observed" category is agreed on by two links for reasons unrelated
+  to linkage, and the model reads that agreement as correct linking.
 * `prep_misclassification_data(sparse = TRUE)` returns a tabulation holding
   only observed cells, plus a `cell_idx` column giving each cell's position
   in the balanced `(Y2, Y1, X)` layout. `misclassifyr()` accepts either
@@ -129,3 +154,11 @@ First release prepared for CRAN. Everything below is new since 0.2.3.
   sparse and dense paths against each other, the EM estimators, the
   Bayesian sampler, and an end-to-end workflow on the packaged
   `ancienregime` data. CI via GitHub Actions (R CMD check).
+* `misclassifyr_traj_em()` is tested against the simulation it was
+  validated on: recovery of `alpha`, `s`, `mu`, `T` and `Pi` at the truth;
+  the `k = 2` versus `k = 3` identification contrast (the profiled
+  likelihood in the shared share is flat at `k = 2` and has an interior
+  bowl at `k = 3`); missing-emission handling, including that `NA` and `0`
+  are the same marker; the freeze options as no-ops when frozen at the free
+  estimates; monotonicity of the log likelihood under plain EM; and that
+  chunking changes nothing but working memory.

@@ -112,6 +112,8 @@ vignette("getting-started", package = "misclassifyr")
 | `make_empirical_Delta_RL*()` | Factories that plug the empirical margin into a record-linkage design |
 | `misclassifyr_rl_em()` | Fast EM estimation of the record-linkage model when the outcome has thousands of categories |
 | `misclassifyr_rl_em_stacked()` | The same, with the error rate shared across conditioning cells |
+| `misclassifyr_known_slab()` | The false-link rate for a single link judged against a known phantom distribution |
+| `misclassifyr_traj_em()` | EM for multi-link bundles: one shared latent rival, a Markov latent state, and a measurement-error layer |
 | `synthetic_data()` | Simulate from the model to check a design before using it |
 
 ## Citation
