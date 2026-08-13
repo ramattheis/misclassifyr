@@ -1,0 +1,59 @@
+#' Synthetic linked capitation rolls from Ancien Regime France: parishes
+#'
+#' A companion to [ancienregime] for the *sparse-outcome* setting: men of
+#' the Third Estate recorded in the (fictional) capitation of 1750 and
+#' linked by the intendance's clerks into the rolls of 1770 and 1780,
+#' with the parish of residence recorded each time. There are 240
+#' parishes across the twelve provinces of the `ancienregime` world --
+#' enough categories that the general-purpose machinery is infeasible
+#' and the EM estimators ([misclassifyr_rl_em()] and relatives) are the
+#' right tool.
+#'
+#' Two features are built in on purpose, and both are lessons:
+#'
+#' * **Links fail, and a failed link is a draw from the wrong man's
+#'   parish.** The 1750-to-1770 link fails at one rate and the
+#'   1750-to-1780 link at a higher one; a failed link attaches the man
+#'   to a stranger drawn from a roll, so the recorded parish is the
+#'   stranger's. The naive parish-to-parish migration rate is inflated
+#'   accordingly.
+#' * **The phantom is local.** Each generalite's clerks searched only
+#'   their own registers, so a failed link draws from the man's *birth
+#'   province's* roll, not the kingdom's. A model that assumes a
+#'   kingdom-wide phantom law mistakes phantom draws landing close to
+#'   home for correct links and understates the false-link rate several
+#'   times over; conditioning on the birth province
+#'   ([misclassifyr_rl_em_stacked()]) recovers it.
+#'
+#' Link failures are independent across the two links here; dependent
+#' failures (the same wrong man twice) are the subject of
+#' [ancienregime_lineages]. The parameters that generated the data,
+#' the parish register (with names), and the auxiliary vingtieme flow
+#' table are in [ancienregime_truth].
+#'
+#' @format A data frame with 120,000 rows and 4 variables:
+#' \describe{
+#'   \item{province_birth}{The province of birth, which is also the
+#'     generalite whose registers the clerks searched.}
+#'   \item{parish_1750}{The parish of residence recorded in the 1750
+#'     capitation (integer code `1..240`; see
+#'     `ancienregime_truth$parish_register` for names and provinces).
+#'     Observed directly, without linkage.}
+#'   \item{parish_1770_linked}{The parish recorded on the 1770 roll the
+#'     clerks linked the man to. Correct unless the link failed.}
+#'   \item{parish_1780_linked}{The parish recorded on the 1780 roll the
+#'     clerks linked the man to.}
+#' }
+#' @source Synthetic data generated for the package by
+#'   `data-raw/make_ancienregime_extras.R`.
+#' @seealso [ancienregime_truth] for the generating parameters,
+#'   [ancienregime_lineages] for dependent failures, and
+#'   `vignette("tour-ancien-regime")` for the worked example.
+#' @examples
+#' data(ancienregime_parishes)
+#' str(ancienregime_parishes)
+#'
+#' # The naive ten-year-equivalent move rate is inflated by false links:
+#' mean(ancienregime_parishes$parish_1750 !=
+#'      ancienregime_parishes$parish_1770_linked)
+"ancienregime_parishes"

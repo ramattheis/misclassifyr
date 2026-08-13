@@ -2,8 +2,9 @@
 
 ## Submission
 
-This is a new submission. misclassifyr 0.3.0 is the first version submitted
-to CRAN.
+This is a new submission. misclassifyr 0.3.1 is the first version submitted
+to CRAN. Relative to the internal 0.3.0, it adds two documentation
+datasets and a comprehensive vignette; the check below is for 0.3.1.
 
 ## Test environments
 

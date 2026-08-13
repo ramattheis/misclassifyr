@@ -4,3 +4,5 @@ inst/doc
 .RData
 .Rproj.user/
 .DS_Store
+misclassifyr.Rcheck/
+misclassifyr_*.tar.gz

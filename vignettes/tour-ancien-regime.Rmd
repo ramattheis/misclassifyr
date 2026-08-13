@@ -1,0 +1,421 @@
+---
+title: "A tour of the Ancien Regime: every capability on one synthetic world"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{A tour of the Ancien Regime: every capability on one synthetic world}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE,
+                      fig.width = 6, fig.height = 4)
+library(misclassifyr)
+```
+
+## The kingdom, and the clerks
+
+The `ancienregime` datasets describe a France that never was: twelve
+provinces, six occupational classes from `Vagabond` up to
+`Haute Bourgeoisie`, and a run of head-tax rolls — the capitation of
+1750, further rolls in 1770, 1780, and 1790, a dixieme in 1745, and one
+vingtieme survey in 1780 that asked every household where it had lived
+ten years before.
+
+None of these records carry a person identifier. They are linked the way
+historical records are always linked: by clerks matching names, and the
+clerks make mistakes. When a link fails it does not produce a blank — it
+produces *somebody else's record*, and every error this package models
+flows from that fact.
+
+This vignette walks the package's full capability set through that one
+world, in the order a research project would meet them:
+
+1. **Migration with a sparse outcome** — 240 parishes, too many for the
+   general-purpose machinery, handled by the EM estimators
+   (`misclassifyr_rl_em()`).
+2. **A true-transition operator from auxiliary data** — the vingtieme's
+   recalled-residence question plays the role the 1940 census's
+   migration question plays in real work.
+3. **The two-step architecture** — a false-link rate estimated where
+   cells are dense, then plugged into the sparse geography.
+4. **Local phantoms and the stacked model** — clerks searched only
+   their own generalite's registers, so a kingdom-wide error model is
+   wrong in a way that matters (`misclassifyr_rl_em_stacked()`).
+5. **A single-link audit** — when the outcome is measured once, a known
+   phantom law and an external operator still identify the error rate
+   (`misclassifyr_known_slab()`).
+6. **Occupation error beyond linkage, and the same wrong man** — clerk
+   miscoding and dependent link failures, separated by three linked
+   measures (`misclassifyr_traj_em()`).
+7. **From the corrected joint to a mobility slope** — the payoff.
+
+Because the world is synthetic, the truth is available —
+`ancienregime_truth` ships the generating parameters — and every
+estimate below is put next to it. On real data you do not get that
+comparison, which is exactly why it is worth seeing once on data where
+you do.
+
+```{r load}
+data(ancienregime_parishes)
+data(ancienregime_lineages)
+data(ancienregime_truth)
+
+head(ancienregime_truth$parish_register, 4)
+```
+
+## 1. Migration with a sparse outcome
+
+A man's parish in 1750 is observed directly; his parishes in 1770 and
+1780 come through links. The naive migration rate — the share of men
+whose linked 1770 parish differs from their 1750 parish — mixes true
+moves with false links:
+
+```{r naive-migration}
+d <- ancienregime_parishes
+mean(d$parish_1750 != d$parish_1770_linked)
+```
+
+Some of that is real migration and some is clerks. With 240 parishes,
+the tabulation is sparse — most parish pairs are never observed — so we
+use the EM estimator built for exactly this shape. It wants a tabulated
+`(X, Y1, Y2, n)` data frame:
+
+```{r tabulate}
+tab <- aggregate(list(n = rep(1L, nrow(d))),
+                 by = list(X  = d$parish_1750,
+                           Y1 = d$parish_1770_linked,
+                           Y2 = d$parish_1780_linked), FUN = sum)
+nrow(tab)   # observed cells, out of 240^3 possible
+```
+
+## 2. The vingtieme supplies the true-transition operator
+
+There is a subtlety before we fit. The 1780 measure is *thirty years*
+after the base record, and men genuinely move in thirty years. A model
+that treats any 1750-vs-1780 disagreement as linkage error will call
+true migration a false link. The fix is a **true-transition operator**:
+tell the model how much genuine movement to expect, and let the
+false-link rate absorb only the rest.
+
+Where does an operator come from? From auxiliary data the rolls
+themselves supply. The vingtieme of 1780 asked each household where it
+resided in 1770 — so the full roll, no linkage involved, yields the
+decade-long parish-to-parish flow:
+
+```{r vingtieme}
+ving <- ancienregime_truth$vingtieme_flows
+head(ving, 3)
+```
+
+This is the toy counterpart of using the 1940 census's five-year
+migration question to discipline the operator in real work. We pass it
+as `T2`, so the second measure's model becomes "a correct link observes
+a draw from true migration; a failed link draws from the phantom law."
+
+```{r fit-unconditional}
+fit_u <- misclassifyr_rl_em(tab, J = 240, K = 240,
+                            T2 = ving[, c("j", "l", "t")],
+                            maxit = 400, tol = 1e-9)
+round(fit_u$alpha, 4)
+ancienregime_truth$parishes$alpha
+```
+
+The fit converges — and it is **badly wrong**, understating both
+false-link rates several times over. That failure is deliberate, and it
+is the next lesson.
+
+## 3. Local phantoms: why the kingdom-wide model fails
+
+The model just fitted assumes a failed link draws from one kingdom-wide
+phantom law. But the intendance's clerks searched only their own
+generalite's registers, so a failed link draws from the man's **birth
+province's** roll. A phantom from your own province often lands near
+home — sometimes in your very parish — and the kingdom-wide model reads
+those as correct links. The estimated rate collapses.
+
+The remedy is to condition the error model the way the linking process
+was actually run: split by birth province, let each cell carry its own
+phantom law, and share the false-link rates across cells — which is
+what `misclassifyr_rl_em_stacked()` does.
+
+```{r fit-stacked}
+tabs <- lapply(split(d, d$province_birth), function(z)
+  aggregate(list(n = rep(1L, nrow(z))),
+            by = list(X  = z$parish_1750,
+                      Y1 = z$parish_1770_linked,
+                      Y2 = z$parish_1780_linked), FUN = sum))
+
+fit_s <- misclassifyr_rl_em_stacked(tabs, J = 240, K = 240,
+                                    T2 = ving[, c("j", "l", "t")],
+                                    maxit = 400, tol = 1e-9)
+round(fit_s$alpha, 4)
+ancienregime_truth$parishes$alpha
+```
+
+Same data, same estimator family, right conditioning — and the truth
+comes back. The general rule: **condition the phantom law on whatever
+the linking keys condition on.** In real work the keys are name,
+birthplace, and age; a phantom pool that ignores them is too diffuse,
+phantom draws look like correct links, and the error rate is
+understated. On this synthetic world the understatement is a factor of
+five; in real linked census data the same mechanism is why unconditional
+estimates should be treated as lower bounds.
+
+The corrected migration matrix itself is `fit_s$cells`, one `Pi` per
+province — sparse, support-restricted, and free of the false-link
+smear.
+
+## 4. The two-step architecture for very sparse outcomes
+
+With hundreds of categories, even the stacked model can leave `Pi`
+data-hungry. The two-step architecture estimates the false-link rates
+where cells are dense — at a coarser aggregation — and then holds them
+fixed while estimating the fine-geography joint. Provinces are our
+coarse level:
+
+```{r two-step}
+reg <- ancienregime_truth$parish_register
+to_prov <- match(reg$province, ancienregime_truth$provinces)  # parish -> province code
+
+tab_prov <- aggregate(list(n = tab$n),
+                      by = list(X  = to_prov[tab$X],
+                                Y1 = to_prov[tab$Y1],
+                                Y2 = to_prov[tab$Y2]), FUN = sum)
+
+# the operator aggregates the same way
+Tm <- matrix(0, 240, 240)
+Tm[cbind(ving$j, ving$l)] <- ving$t
+Tp <- rowsum(t(rowsum(Tm, to_prov)), to_prov)      # flows province -> province
+Tp <- Tp / rowSums(Tp)
+T2_prov <- data.frame(j = rep(seq_len(12), each = 12),
+                      l = rep(seq_len(12), times = 12),
+                      t = as.vector(t(Tp)))
+
+fit_coarse <- misclassifyr_rl_em(tab_prov, J = 12, K = 12, T2 = T2_prov,
+                                 maxit = 400, tol = 1e-9)
+round(fit_coarse$alpha, 4)
+```
+
+The coarse fit collapses almost to zero — *worse* than the parish-level
+fit, not better. The reason is worth a moment: a failed link draws from
+the man's birth province, and most men still live in their birth
+province, so at province resolution the phantom lands on the **same
+aggregated value as the truth** and the false link becomes literally
+invisible. Coarsening below the resolution of the phantom's locality
+does not dilute the problem; it erases the evidence. **Coarsening is
+not conditioning.** The honest coarse step in this world is the stacked
+fit of section 3 — dense enough cells *and* the right conditioning —
+and in real work it is whatever level achieves both. With the rates in
+hand, the fine-geography second step is one argument:
+
+```{r two-step-fine, eval = FALSE}
+fit_fine <- misclassifyr_rl_em(tab, J = 240, K = 240,
+                               T2 = ving[, c("j", "l", "t")],
+                               alpha_fixed = fit_s$alpha)
+```
+
+(Not run here only to keep the vignette quick; it converges in a few
+seconds and its `Pi` matches section 3's.)
+
+## 5. The single-link audit: a known phantom law
+
+Everything so far used two linked measures. Sometimes there is only
+one — but if the phantom law is *known* rather than estimated, one
+measure still identifies the false-link rate. In this world the rolls
+are public: the intendant of Bretagne can put his linked 1750-to-1780
+sample next to the full 1780 roll of his own generalite, whose margin
+is exactly the law his clerks' failed links drew from.
+
+```{r known-slab}
+own <- reg$parish[reg$province == "Bretagne"]
+db  <- d[d$province_birth == "Bretagne", ]
+tab1 <- aggregate(list(n = rep(1L, nrow(db))),
+                  by = list(x = db$parish_1750,
+                            y = db$parish_1780_linked), FUN = sum)
+
+# three decades of true migration, from the vingtieme operator composed
+T3 <- Tm %*% Tm %*% Tm
+Tc <- data.frame(x = rep(seq_len(240), each = 240),
+                 y = rep(seq_len(240), times = 240),
+                 t = as.vector(t(T3)))
+Tc <- Tc[Tc$t > 1e-9, ]
+
+rho_bretagne <- ancienregime_truth$parishes$margin_1780
+rho_bretagne[-own] <- 0
+rho_bretagne <- rho_bretagne / sum(rho_bretagne)
+
+fit_1 <- misclassifyr_known_slab(tab1, T_cond = Tc, rho = rho_bretagne)
+round(fit_1$alpha, 3)
+ancienregime_truth$parishes$alpha[2]
+```
+
+Close, and the gap is instructive: the operator here is the *vingtieme's*
+flow table composed three times, sampling noise and all, and the
+single-link design leans on the operator harder than the two-link
+design does — there is no second measure to share the burden. Report
+single-link estimates with an operator-sensitivity band (refit under a
+perturbed operator) rather than as a point.
+
+This is the design to reach for when a census asks its own migration
+question: the operator comes from the question, the phantom law from
+the full count, and the single link's error rate falls out. It is also
+a useful *audit* of the two-link estimates, since it rests on different
+data.
+
+## 6. Occupation error beyond linkage, and the same wrong man
+
+Now the harder problem, and the reason the package exists. Turn to the
+lineages: fathers observed in 1750 (and, through a link, in the 1745
+dixieme), sons linked into 1770, 1780, and 1790. The estimand is the
+transmission matrix — father's class to son's class — and *two* error
+processes stand between the rolls and it:
+
+* **The clerk's pen.** Occupations are miscoded to an adjacent rung
+  with probability `mu`, on every record, linked or not. A `Journalier`
+  written down as a `Metayer` is not a linkage error, and no linkage
+  model can absorb it correctly.
+* **The same wrong man.** When a son's links fail, they do not fail
+  independently: with probability `pi_shared` every failed link lands
+  on the *same* rival — a real person, whose own career follows the
+  same decade-to-decade dynamics. Two men confusable in 1770 are
+  confusable in 1780.
+
+Start with what goes wrong if you ignore both. Fit the plain
+record-linkage model on the first two measures of the son:
+
+```{r two-measure-blind}
+occ  <- ancienregime_truth$occupations
+lin  <- ancienregime_lineages
+code <- function(v) match(v, occ)
+
+tab2 <- aggregate(list(n = rep(1L, nrow(lin))),
+                  by = list(X  = code(lin$father_occupation_1750),
+                            Y1 = code(lin$son_occupation_1770_linked),
+                            Y2 = code(lin$son_occupation_1780_linked)),
+                  FUN = sum)
+fit_2 <- misclassifyr_rl_em(tab2, J = 6, K = 6, maxit = 500)
+round(fit_2$alpha, 3)
+ancienregime_truth$lineages$alpha[1:2]
+```
+
+Both rates are wrong, and the second is wrong by more than a factor of
+two. The diagnosis is worth internalizing, because it is the deepest
+lesson this package has to teach: **the false-link rate is the residual
+of your model of true change.** The two-measure model here has no
+occupational dynamics — it expects a correctly-linked son to report the
+*same* class in 1780 as in 1770 — so every genuine career move between
+the two rolls, and every stroke of the clerk's pen, has exactly one
+parameter left to land in. The rate is not measuring linkage any more;
+it is absorbing everything the model cannot represent. (And the
+dependence is invisible on top of that: with two measures, no feature
+of the data distinguishes independent failures from same-rival
+failures.)
+
+The trajectory estimator fixes all three deficiencies at once: a third
+linked measure (which identifies the dependence), a transition operator
+`T` estimated inside the model (which carries true career moves), and a
+measurement kernel (which carries the clerk).
+
+```{r traj}
+tab3 <- aggregate(list(n = rep(1L, nrow(lin))),
+                  by = list(Y1 = code(lin$son_occupation_1770_linked),
+                            Y2 = code(lin$son_occupation_1780_linked),
+                            Y3 = code(lin$son_occupation_1790_linked),
+                            X  = code(lin$father_occupation_1750),
+                            Xf = code(lin$father_occupation_1745_linked)),
+                  FUN = sum)
+
+tr <- ancienregime_truth$lineages
+fit_3 <- misclassifyr_traj_em(
+  tab3, J = 6,
+  rho    = tr$occupation_slab,   # the latent slab failed links draw from
+  rho_f  = tr$father_margin,     # the father's link's phantom law
+  kernel = tr$kernel,            # the clerk's adjacent-rung confusion
+  dstep  = c(1, 1),              # one decade between consecutive measures
+  dstep_f = 1,                   # the dixieme sits one step before the base
+  maxit  = 800)
+
+rbind(estimate = round(c(fit_3$alpha, s = fit_3$s, mu = fit_3$mu[1],
+                         alpha_f = fit_3$alpha_f), 3),
+      truth    = round(c(tr$alpha, s = tr$s, mu = tr$mu,
+                         alpha_f = tr$alpha_f), 3))
+```
+
+Every parameter comes back: the three marginal false-link rates, the
+share `s` of failures that hit the same rival, the clerk's `mu`, and
+the father's own link rate `alpha_f` — the last identified because the
+father, too, is measured twice. Note what the estimator was *given*:
+the phantom laws (`rho`, `rho_f`) as data, derived here from the
+world's registers, exactly as real work derives them from full-count
+margins — and note the docstring's warning that with a `kernel` these
+are laws over the *latent* class.
+
+The two practical warnings from the estimator's documentation bear
+repeating. The `(alpha, s)` block sits on a likelihood plateau, so use
+the tight default tolerance and, on real data, multiple starts. And a
+fitted `s` at meso resolution is a *lower bound* on the dependence:
+rivals are selected for confusability, and confusable men do similar
+work, so a same-rival failure is often invisible in the occupation
+alphabet.
+
+## 7. The payoff: a corrected mobility slope
+
+The object of interest was never `alpha` — it was the transmission of
+standing from father to son. Attach a livre-denominated income score to
+each class and compare three slopes: the naive one from the linked
+records, the corrected one from `fit_3$Pi`, and the truth.
+
+```{r slope}
+scores <- c(10, 25, 30, 45, 90, 250)   # livres, one per class
+slope_from_joint <- function(P) {
+  P <- P / sum(P)
+  fx <- rowSums(P); fy <- colSums(P)
+  mx <- sum(scores * fx); my <- sum(scores * fy)
+  cxy <- sum(outer(scores - mx, scores - my) * P)
+  vx  <- sum((scores - mx)^2 * fx)
+  cxy / vx
+}
+
+Pi_true  <- tr$Pi * tr$father_margin           # joint from the truth
+Pi_naive <- with(lin, table(factor(code(father_occupation_1750), 1:6),
+                            factor(code(son_occupation_1770_linked), 1:6))) |>
+  prop.table() |> unclass()
+
+c(naive     = slope_from_joint(Pi_naive),
+  corrected = slope_from_joint(fit_3$Pi),
+  truth     = slope_from_joint(Pi_true)) |> round(3)
+```
+
+The naive slope is attenuated — false links put strangers' sons under
+fathers they do not belong to, and the clerk's noise attenuates further
+— and the corrected slope sits on the truth. For delta-method standard
+errors and Monte Carlo confidence sets on slopes like this one, see
+`se_beta_deltamethod()`, `Pi_to_beta()`, and `vignette("inference")`.
+
+## What to take back to real data
+
+Each section above is one lesson, and they compound:
+
+1. **Sparse outcomes need the EM estimators**, and a tabulation is all
+   they ask for.
+2. **Bring an operator for true change** — from an auxiliary question,
+   an external survey, anything not built on the links themselves —
+   or the false-link rate will eat true change.
+3. **Estimate the error rate where cells are dense**, then fix it where
+   they are sparse.
+4. **Condition the phantom law on the linking keys.** An unconditional
+   phantom pool is too diffuse, and the error rate collapses toward
+   zero. Treat unconditional estimates as lower bounds.
+5. **A known phantom law rescues the single-link design**, and audits
+   the others.
+6. **Two measures cannot see dependent failures, and a linkage-only
+   model turns true dynamics and miscoding into "false links."** The
+   false-link rate is the residual of your model of true change; before
+   trusting a correction, ask whether that model is rich enough that
+   the rate is not quietly standing in for it.
+7. **The corrected joint, not the error rate, is the deliverable** —
+   and it feeds straight into downstream slopes with inference.
+
+All of it, on a kingdom that never existed, from rolls no clerk ever
+botched.

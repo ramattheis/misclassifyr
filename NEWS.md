@@ -1,3 +1,20 @@
+# misclassifyr 0.3.1
+
+* New companion datasets `ancienregime_parishes` (240 parishes across the
+  twelve provinces: the sparse-outcome setting, with locally drawn
+  phantoms) and `ancienregime_lineages` (father-son pairs with three
+  linked measures of the son, clerk miscoding, and shared-rival dependent
+  link failures), plus `ancienregime_truth` carrying the generating
+  parameters, the parish register, and the vingtieme flow table. The
+  generator ships in `data-raw/`.
+* New vignette `tour-ancien-regime`: every capability of the package
+  worked through the one synthetic world -- sparse migration with an
+  auxiliary transition operator, the two-step architecture, the stacked
+  model and why unconditional phantom laws understate error rates, the
+  single-link known-slab audit, the trajectory model separating linkage
+  error from clerk miscoding and dependent failures, and the corrected
+  mobility slope.
+
 # misclassifyr 0.3.0
 
 First release prepared for CRAN. Everything below is new since 0.2.3.

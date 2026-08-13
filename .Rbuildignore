@@ -9,3 +9,5 @@
 \.DS_Store$
 ^CRAN-SUBMISSION$
 ^cran-comments\.md$
+^data-raw$
+^docs$

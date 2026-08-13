@@ -80,10 +80,10 @@ uncorrected estimate of intergenerational persistence is about 19% too low.
 vignette("getting-started", package = "misclassifyr")
 ```
 
-- **[Getting started](vignettes/getting-started.Rmd)** — the workflow end to
+- **[Getting started](vignettes/getting-started.Rmd)** ([PDF](docs/getting-started.pdf)) — the workflow end to
   end on the packaged data, what the output means, and how much the
   correction moves the answer.
-- **[Designing misclassification models](vignettes/designing-misclassification-models.Rmd)**
+- **[Designing misclassification models](vignettes/designing-misclassification-models.Rmd)** ([PDF](docs/designing-misclassification-models.pdf))
   — the main reference. How to enumerate the error channels in your own
   setting (transcription, coding drift, linkage failure, heaping), turn them
   into a parameterized $\Delta$, write it as an R closure with a matching
@@ -91,15 +91,23 @@ vignette("getting-started", package = "misclassifyr")
   using a large language model as a drafting assistant, and — more
   importantly — how to check what it produces. Also covers stacked
   estimation with a shared error rate across conditioning cells.
-- **[High-dimensional outcomes](vignettes/sparse-and-large.Rmd)** — sparse
+- **[High-dimensional outcomes](vignettes/sparse-and-large.Rmd)** ([PDF](docs/sparse-and-large.pdf)) — sparse
   tabulations and a dedicated expectation-maximization estimator for the
   record-linkage model when the outcome has hundreds or thousands of
   categories, including two-step estimation and separating true transitions
   from linkage error.
-- **[Inference](vignettes/inference.Rmd)** — delta-method standard errors,
+- **[Inference](vignettes/inference.Rmd)** ([PDF](docs/inference.pdf)) — delta-method standard errors,
   what a singular information matrix means (boundary versus weak
   identification), Chen–Christensen–Tamer Monte Carlo confidence sets, and
   which to report.
+- **[A tour of the Ancien Regime](vignettes/tour-ancien-regime.Rmd)**
+  ([PDF](docs/tour-ancien-regime.pdf)) — every capability on one synthetic
+  world: sparse migration with an auxiliary transition operator, the
+  two-step architecture, stacked estimation and why unconditional phantom
+  laws understate error rates, the single-link known-slab audit, and the
+  trajectory model separating linkage error from occupation miscoding and
+  dependent link failures — with every estimate compared to the truth
+  that generated the data.
 
 ## Main functions
 
