@@ -180,7 +180,7 @@ c(correlation = cor(fit$Pi$p, p_true),
   max_abs_err = max(abs(fit$Pi$p - p_true)))
 ```
 
-Also worth checking: $\hat\rho$, the phantom distribution, against the true
+Also worth checking: $\hat\rho$, the rival distribution, against the true
 latent margin.
 
 ```{r em-rho}
@@ -238,10 +238,10 @@ c(free_alpha  = max(abs(fit$Pi$p   - p_true)),
 
 One caveat on step one. Aggregation is only harmless if a failed link rarely
 lands inside the same coarse cell as the truth. That holds here, because the
-phantom pool is spread over all 300 counties and only one in thirty draws
+rival pool is spread over all 300 counties and only one in thirty draws
 falls in the right state. It fails if the linking algorithm itself matched on
 something correlated with the aggregation — if it matched on region, a
-phantom is a same-region person, aggregation to regions hides most link
+rival is a same-region person, aggregation to regions hides most link
 failures, and $\hat\alpha$ from the coarse step is biased toward zero. In
 that case condition on the matching variable instead and share $\alpha$
 across cells with `misclassifyr_rl_em_stacked()`; see

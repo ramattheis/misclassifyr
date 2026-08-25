@@ -1,4 +1,4 @@
-# Two-component mixture with a KNOWN phantom distribution: the 1935-40
+# Two-component mixture with a KNOWN rival distribution: the 1935-40
 # migration-question design, where the population joint is observed in the
 # full count rather than inferred from a repeated measure.
 

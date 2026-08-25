@@ -33,7 +33,7 @@ test_that("the companion datasets load with the documented shape", {
   expect_true(all(abs(s - 1) < 1e-8))
 })
 
-test_that("local phantoms: stacked recovers alpha, unconditional collapses", {
+test_that("local rivals: stacked recovers alpha, unconditional collapses", {
   skip_on_cran()
   env <- new.env()
   data("ancienregime_parishes", package = "misclassifyr", envir = env)

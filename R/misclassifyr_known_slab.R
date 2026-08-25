@@ -1,4 +1,4 @@
-#' Estimate a false-link rate against a known phantom distribution
+#' Estimate a false-link rate against a known rival distribution
 #'
 #' A two-component mixture estimator for the cleanest identification
 #' available in record linkage: a single link whose correctness can be
@@ -22,7 +22,7 @@
 #' Coherent pairs reflect true 1930-35 migration; incoherent ones are
 #' draws from the population, which the full count reveals exactly. Unlike
 #' the repeated-measures estimators in this package, nothing here needs a
-#' second noisy measure — one link suffices, because the phantom
+#' second noisy measure — one link suffices, because the rival
 #' distribution is observed rather than inferred.
 #'
 #' Estimation is by direct maximization of a one-parameter likelihood, so

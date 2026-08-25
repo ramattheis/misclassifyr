@@ -45,10 +45,10 @@ parish.} The 1750-to-1770 link fails at one rate and the
 to a stranger drawn from a roll, so the recorded parish is the
 stranger's. The naive parish-to-parish migration rate is inflated
 accordingly.
-\item \strong{The phantom is local.} Each generalite's clerks searched only
+\item \strong{The rival is local.} Each generalite's clerks searched only
 their own registers, so a failed link draws from the man's \emph{birth
 province's} roll, not the kingdom's. A model that assumes a
-kingdom-wide phantom law mistakes phantom draws landing close to
+kingdom-wide rival law mistakes spurious draws landing close to
 home for correct links and understates the false-link rate several
 times over; conditioning on the birth province
 (\code{\link[=misclassifyr_rl_em_stacked]{misclassifyr_rl_em_stacked()}}) recovers it.

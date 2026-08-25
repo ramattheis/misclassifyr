@@ -17,10 +17,10 @@
 #'   to a stranger drawn from a roll, so the recorded parish is the
 #'   stranger's. The naive parish-to-parish migration rate is inflated
 #'   accordingly.
-#' * **The phantom is local.** Each generalite's clerks searched only
+#' * **The rival is local.** Each generalite's clerks searched only
 #'   their own registers, so a failed link draws from the man's *birth
 #'   province's* roll, not the kingdom's. A model that assumes a
-#'   kingdom-wide phantom law mistakes phantom draws landing close to
+#'   kingdom-wide rival law mistakes spurious draws landing close to
 #'   home for correct links and understates the false-link rate several
 #'   times over; conditioning on the birth province
 #'   ([misclassifyr_rl_em_stacked()]) recovers it.

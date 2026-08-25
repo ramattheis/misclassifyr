@@ -5,7 +5,7 @@
 #' the false-link rates (alpha1, alpha2) SHARED across cells and the
 #' failed-link draw distributions rho and the joint distribution Pi
 #' CELL-SPECIFIC. This implements the conditional-independence version of
-#' the model: phantom draws for a failed link come from the candidate pool
+#' the model: spurious draws for a failed link come from the candidate pool
 #' matching the linking keys (e.g. same birthplace), not the unconditional
 #' marginal — an unconditional slab that is too diffuse makes false links
 #' look correct and biases alpha downward.
@@ -28,7 +28,7 @@
 #' @seealso [misclassifyr_rl_em()] for the single-tabulation version, and
 #'   `vignette("designing-misclassification-models")` for when to stack.
 #' @examples
-#' # Four birthplace cells; a failed link draws a phantom from within the
+#' # Four birthplace cells; a failed link draws a rival from within the
 #' # SAME cell, because the linking algorithm matched on birthplace.
 #' set.seed(41)
 #' C <- 4; J <- 20; N <- 40000; alpha <- 0.25
@@ -47,7 +47,7 @@
 #' stacked <- misclassifyr_rl_em_stacked(tabs, J = J, K = J)
 #' stacked$alpha   # close to (0.25, 0.25)
 #'
-#' # Pooling the cells and using the unconditional margin as the phantom
+#' # Pooling the cells and using the unconditional margin as the rival
 #' # distribution biases alpha downward
 #' pooled_tab <- aggregate(list(n = rep(1, N)),
 #'                         by = list(X = df$X, Y1 = df$Y1, Y2 = df$Y2), FUN = sum)

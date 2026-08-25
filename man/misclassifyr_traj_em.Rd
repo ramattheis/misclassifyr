@@ -42,7 +42,7 @@ identical patterns must be aggregated first.}
 \item{J}{An integer, the number of latent states. The anchor and the
 traced person share the state space, because they share \code{T}.}
 
-\item{rho}{The phantom (rival) laws, treated as DATA and never updated: a
+\item{rho}{The rival (rival) laws, treated as DATA and never updated: a
 \verb{J x J} row-stochastic matrix whose row \code{i} is the distribution of a
 fresh rival's latent state given anchor state \code{i}, or a list of \code{k} such
 matrices (one per linked measure), or a length-\code{J} probability vector
@@ -52,7 +52,7 @@ localised the way the linking keys localise the candidate pool. When
 applies the measurement layer to them itself, so an observed margin
 must be deconvolved first (or \code{kernel} left \code{NULL}).}
 
-\item{rho_f}{The phantom law for the anchor's own link, as a \verb{J x J}
+\item{rho_f}{The rival law for the anchor's own link, as a \verb{J x J}
 matrix or a length-\code{J} vector. Required when \code{tab} has an \code{Xf} column.}
 
 \item{kernel}{The \verb{J x J} row-stochastic confusion kernel \code{K}. \code{NULL}
@@ -154,7 +154,7 @@ confused by the \emph{same} rival. This estimator gives each unit \strong{one la
 rival}, whose own state follows the same chain \code{T}. With probability
 \eqn{\pi_s} all \code{k} links fail to that shared rival; otherwise each link
 fails independently with probability \eqn{b_j} to a fresh rival drawn from
-the phantom law \code{rho}. The marginal false-link rate is
+the rival law \code{rho}. The marginal false-link rate is
 \eqn{\alpha_j = \pi_s + (1-\pi_s) b_j} and the share of failures that are
 shared is \eqn{s = \pi_s / \alpha_1}. At \code{k = 2} this is a five-component
 mixture (both correct; either one correct; both failed to fresh rivals;
@@ -209,7 +209,7 @@ expected transition counts (son-chain steps, shared-rival-chain steps and
 the anchor's own link step), and \code{mu} the expected share of emissions
 drawn from \code{K}, obtained exactly from the emission-swap identity
 \eqn{E[\#K \text{ at slot } t] = \sum_c (n_c/P_c) P^{(t,\mu K)}_c}. This
-holds \strong{only because the phantom laws \code{rho} are data}. Rebuilding them
+holds \strong{only because the rival laws \code{rho} are data}. Rebuilding them
 from the current \code{T} each iteration breaks the factorization and, in
 simulation, breaks recovery; \code{rho} is never updated.
 }
@@ -254,5 +254,5 @@ round(fit$Pi, 3) # the estimand: anchor state x traced state
 \seealso{
 \code{\link[=misclassifyr_rl_em]{misclassifyr_rl_em()}} for the rank-one two-link model this
 generalises, and \code{\link[=misclassifyr_known_slab]{misclassifyr_known_slab()}} for the single-link case
-with a known phantom law.
+with a known rival law.
 }

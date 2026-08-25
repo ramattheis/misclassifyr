@@ -141,7 +141,7 @@ traj_son = function(Pi, pi0, mown, efresh, bw, wC, pis, rho1, k, J, Cc,
 #' rival**, whose own state follows the same chain `T`. With probability
 #' \eqn{\pi_s} all `k` links fail to that shared rival; otherwise each link
 #' fails independently with probability \eqn{b_j} to a fresh rival drawn from
-#' the phantom law `rho`. The marginal false-link rate is
+#' the rival law `rho`. The marginal false-link rate is
 #' \eqn{\alpha_j = \pi_s + (1-\pi_s) b_j} and the share of failures that are
 #' shared is \eqn{s = \pi_s / \alpha_1}. At `k = 2` this is a five-component
 #' mixture (both correct; either one correct; both failed to fresh rivals;
@@ -190,7 +190,7 @@ traj_son = function(Pi, pi0, mown, efresh, bw, wC, pis, rho1, k, J, Cc,
 #' the anchor's own link step), and `mu` the expected share of emissions
 #' drawn from `K`, obtained exactly from the emission-swap identity
 #' \eqn{E[\#K \text{ at slot } t] = \sum_c (n_c/P_c) P^{(t,\mu K)}_c}. This
-#' holds **only because the phantom laws `rho` are data**. Rebuilding them
+#' holds **only because the rival laws `rho` are data**. Rebuilding them
 #' from the current `T` each iteration breaks the factorization and, in
 #' simulation, breaks recovery; `rho` is never updated.
 #'
@@ -203,7 +203,7 @@ traj_son = function(Pi, pi0, mown, efresh, bw, wC, pis, rho1, k, J, Cc,
 #'   identical patterns must be aggregated first.
 #' @param J An integer, the number of latent states. The anchor and the
 #'   traced person share the state space, because they share `T`.
-#' @param rho The phantom (rival) laws, treated as DATA and never updated: a
+#' @param rho The rival (rival) laws, treated as DATA and never updated: a
 #'   `J x J` row-stochastic matrix whose row `i` is the distribution of a
 #'   fresh rival's latent state given anchor state `i`, or a list of `k` such
 #'   matrices (one per linked measure), or a length-`J` probability vector
@@ -212,7 +212,7 @@ traj_son = function(Pi, pi0, mown, efresh, bw, wC, pis, rho1, k, J, Cc,
 #'   `kernel` is supplied these are laws over the LATENT state: the model
 #'   applies the measurement layer to them itself, so an observed margin
 #'   must be deconvolved first (or `kernel` left `NULL`).
-#' @param rho_f The phantom law for the anchor's own link, as a `J x J`
+#' @param rho_f The rival law for the anchor's own link, as a `J x J`
 #'   matrix or a length-`J` vector. Required when `tab` has an `Xf` column.
 #' @param kernel The `J x J` row-stochastic confusion kernel `K`. `NULL`
 #'   (default) switches the measurement-error layer off.
@@ -274,7 +274,7 @@ traj_son = function(Pi, pi0, mown, efresh, bw, wC, pis, rho1, k, J, Cc,
 #'   `n_feval` and `converged`.
 #' @seealso [misclassifyr_rl_em()] for the rank-one two-link model this
 #'   generalises, and [misclassifyr_known_slab()] for the single-link case
-#'   with a known phantom law.
+#'   with a known rival law.
 #' @examples
 #' # Three links of one traced person, plus an anchor observed twice.
 #' # Latent states drift one step per census; a failed link attaches the
@@ -378,7 +378,7 @@ misclassifyr_traj_em = function(tab, J, rho, rho_f = NULL, kernel = NULL,
   if(length(dstep_f) != 1L || is.na(dstep_f) || dstep_f < 0L)
     stop("`dstep_f` must be a single non-negative integer.")
 
-  # ---- phantom laws (DATA) ----
+  # ---- rival laws (DATA) ----
   as_rho = function(r, nm){
     if(is.null(r)) stop(sprintf("`%s` is required.", nm))
     if(is.null(dim(r))){
@@ -757,7 +757,8 @@ misclassifyr_traj_em = function(tab, J, rho, rho_f = NULL, kernel = NULL,
       rs = rowSums(T_count); keep = rs > 1e-9
       Tn = pp$T; Tn[keep, ] = T_count[keep, ] / rs[keep]; q$T = Tn
     }
-    list(ll = ll, par = q)
+    list(ll = ll, par = q,
+         counts = list(R_C = R_C, R_SSS = R_SSS, R_f = R_f, N = N))
   }
 
   #------------------------------------------------------------
@@ -839,6 +840,12 @@ misclassifyr_traj_em = function(tab, J, rho, rho_f = NULL, kernel = NULL,
   names(alpha) = paste0("alpha", seq_len(k))
   bvec = p$b; names(bvec) = paste0("b", seq_len(k))
 
+  # One extra E-pass at the final parameters, exposing the expected-count
+  # aggregates that the shared-parameter M-steps are ratios of. This is
+  # what lets misclassifyr_traj_em_shared() pool (pi_shared, b) across
+  # views exactly rather than approximately.
+  sfin = em_step(p, need_counts = TRUE)
+
   return(list(
     alpha = alpha,
     s = if(alpha[1] > 0) unname(p$pis / alpha[1]) else 0,
@@ -853,6 +860,7 @@ misclassifyr_traj_em = function(tab, J, rho, rho_f = NULL, kernel = NULL,
     loglik_trace = loglik_trace,
     n_iter = length(loglik_trace),
     n_feval = nfe,
-    converged = converged
+    converged = converged,
+    Ecounts = c(sfin$counts, list(ll = sfin$ll))
   ))
 }

@@ -214,5 +214,5 @@ round(matrix(fit$Delta_hat_mle, nrow = 3) \%*\% marginalize, 3)
 \seealso{
 \code{\link[=prep_misclassification_data]{prep_misclassification_data()}} to build \code{tab}, \code{\link[=Pi_to_beta]{Pi_to_beta()}} to
 turn \code{Pi_hat_mle} into a regression coefficient, and
-\code{vignette("getting-started")}.
+\code{vignette("tour-ancien-regime")}.
 }

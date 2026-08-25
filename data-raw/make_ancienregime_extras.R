@@ -5,9 +5,9 @@
 #     (fictional) capitation rolls of 1750, 1770, and 1780, with parish
 #     of residence recorded each time. 240 parishes in the 12 provinces
 #     of the ancienregime world: the sparse-outcome setting. Link
-#     failures draw a phantom from the man's BIRTH province's roll,
+#     failures draw a rival from the man's BIRTH province's roll,
 #     because the intendance's clerks searched only their own
-#     generalite's registers -- which is what makes the phantom law
+#     generalite's registers -- which is what makes the rival law
 #     local, and the unconditional model wrong in an instructive way.
 #
 #   * ancienregime_lineages -- father-son pairs: the father recorded in
@@ -55,7 +55,7 @@ draw_from <- function(P, i) {
 # The parish register: 20 parishes per province, with names assembled
 # from pools a period clerk would recognise, and populations that are
 # very unequal -- one small city per province, a scatter of bourgs, and
-# many hamlets. Unequal populations are the point: they make the phantom
+# many hamlets. Unequal populations are the point: they make the rival
 # law informative and the tabulation sparse.
 # ---------------------------------------------------------------------
 
@@ -106,7 +106,7 @@ T_par <- T_par / rowSums(T_par)
 
 # Latent parish margins at each roll, from the 1750 shares pushed
 # through T. These are the "full rolls" a clerk could consult, and the
-# per-province phantom laws are their within-province renormalisations.
+# per-province rival laws are their within-province renormalisations.
 m_1750 <- parish_register$share_1750
 m_1770 <- as.numeric(m_1750 %*% T_par %*% T_par)
 m_1780 <- as.numeric(m_1770 %*% T_par)
@@ -121,7 +121,7 @@ local_slab <- function(margin, prov) {
 # ---------------------------------------------------------------------
 # ancienregime_parishes: N men. True 1750 parish observed; links into
 # 1770 and 1780 fail with rates alpha1, alpha2, and a failed link draws
-# a phantom from the BIRTH province's roll at that date. Failures are
+# a rival from the BIRTH province's roll at that date. Failures are
 # independent across the two links here -- dependence is the lineages
 # dataset's subject.
 # ---------------------------------------------------------------------
@@ -260,7 +260,7 @@ xf <- draw_from(T_occ, fa)
 xf[ff] <- sample.int(J_occ, sum(ff), replace = TRUE, prob = pi_father)
 
 # the clerk miscodes EVERY recorded occupation with probability mu,
-# whatever its source -- the truth, a rival, or a phantom
+# whatever its source -- the truth, a rival, or a rival
 miscode <- function(v) {
   hit <- runif(length(v)) < mu_clerk
   v[hit] <- draw_from(K_clerk, v[hit])

@@ -118,7 +118,7 @@
 #'
 #' @seealso [prep_misclassification_data()] to build `tab`, [Pi_to_beta()] to
 #'   turn `Pi_hat_mle` into a regression coefficient, and
-#'   `vignette("getting-started")`.
+#'   `vignette("tour-ancien-regime")`.
 #'
 #' @examples
 #' # A three-category outcome measured twice, with record-linkage errors

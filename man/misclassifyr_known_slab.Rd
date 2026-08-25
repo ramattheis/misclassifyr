@@ -2,7 +2,7 @@
 % Please edit documentation in R/misclassifyr_known_slab.R
 \name{misclassifyr_known_slab}
 \alias{misclassifyr_known_slab}
-\title{Estimate a false-link rate against a known phantom distribution}
+\title{Estimate a false-link rate against a known rival distribution}
 \usage{
 misclassifyr_known_slab(tab, T_cond, rho, alpha_bounds = c(1e-06, 1 - 1e-06))
 }
@@ -54,7 +54,7 @@ while the linked 1940 record reports where its person lived in 1935.
 Coherent pairs reflect true 1930-35 migration; incoherent ones are
 draws from the population, which the full count reveals exactly. Unlike
 the repeated-measures estimators in this package, nothing here needs a
-second noisy measure — one link suffices, because the phantom
+second noisy measure — one link suffices, because the rival
 distribution is observed rather than inferred.
 
 Estimation is by direct maximization of a one-parameter likelihood, so

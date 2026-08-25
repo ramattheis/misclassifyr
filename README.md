@@ -77,12 +77,9 @@ uncorrected estimate of intergenerational persistence is about 19% too low.
 ## Vignettes
 
 ```r
-vignette("getting-started", package = "misclassifyr")
+vignette("tour-ancien-regime", package = "misclassifyr")
 ```
 
-- **[Getting started](vignettes/getting-started.Rmd)** ([PDF](docs/getting-started.pdf)) — the workflow end to
-  end on the packaged data, what the output means, and how much the
-  correction moves the answer.
 - **[Designing misclassification models](vignettes/designing-misclassification-models.Rmd)** ([PDF](docs/designing-misclassification-models.pdf))
   — the main reference. How to enumerate the error channels in your own
   setting (transcription, coding drift, linkage failure, heaping), turn them
@@ -103,7 +100,7 @@ vignette("getting-started", package = "misclassifyr")
 - **[A tour of the Ancien Regime](vignettes/tour-ancien-regime.Rmd)**
   ([PDF](docs/tour-ancien-regime.pdf)) — every capability on one synthetic
   world: sparse migration with an auxiliary transition operator, the
-  two-step architecture, stacked estimation and why unconditional phantom
+  two-step architecture, stacked estimation and why unconditional rival
   laws understate error rates, the single-link known-slab audit, and the
   trajectory model separating linkage error from occupation miscoding and
   dependent link failures — with every estimate compared to the truth
@@ -120,7 +117,7 @@ vignette("getting-started", package = "misclassifyr")
 | `make_empirical_Delta_RL*()` | Factories that plug the empirical margin into a record-linkage design |
 | `misclassifyr_rl_em()` | Fast EM estimation of the record-linkage model when the outcome has thousands of categories |
 | `misclassifyr_rl_em_stacked()` | The same, with the error rate shared across conditioning cells |
-| `misclassifyr_known_slab()` | The false-link rate for a single link judged against a known phantom distribution |
+| `misclassifyr_known_slab()` | The false-link rate for a single link judged against a known rival distribution |
 | `misclassifyr_traj_em()` | EM for multi-link bundles: one shared latent rival, a Markov latent state, and a measurement-error layer |
 | `synthetic_data()` | Simulate from the model to check a design before using it |
 

@@ -1,3 +1,24 @@
+# misclassifyr 0.3.2 (development)
+
+* New `misclassifyr_traj_em_shared()`: fits the trajectory model jointly
+  on two or more *views* -- tabulations of the same linked men through
+  different outcome alphabets (counties in one view, occupation groups
+  in another) -- with the record-linkage component (the shared-rival
+  probability, the fresh-failure rates, hence every marginal false-link
+  rate and the shared share) forced equal across views. A link fails or
+  holds once, whatever outcome is read off the linked record. Block
+  generalized EM with exact pooled M-steps; the composite trace is
+  monotone.
+
+* New `misclassifyr_rl_em_shared()`: the two-link analogue for
+  heterogeneous designs, sharing (alpha1, alpha2) across designs that
+  each carry their own alphabet size and transition operator.
+
+* `misclassifyr_traj_em()` now returns `Ecounts`, the expected-count
+  aggregates of one E-step at the returned parameters (the sufficient
+  statistics whose ratios are the shared-parameter M-steps). This is
+  what the shared driver pools; it is also useful for diagnostics.
+
 # misclassifyr 0.3.1
 
 * New companion datasets `ancienregime_parishes` (240 parishes across the

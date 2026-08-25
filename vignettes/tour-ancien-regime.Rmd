@@ -39,11 +39,11 @@ world, in the order a research project would meet them:
    migration question plays in real work.
 3. **The two-step architecture** — a false-link rate estimated where
    cells are dense, then plugged into the sparse geography.
-4. **Local phantoms and the stacked model** — clerks searched only
+4. **Local rivals and the stacked model** — clerks searched only
    their own generalite's registers, so a kingdom-wide error model is
    wrong in a way that matters (`misclassifyr_rl_em_stacked()`).
 5. **A single-link audit** — when the outcome is measured once, a known
-   phantom law and an external operator still identify the error rate
+   rival law and an external operator still identify the error rate
    (`misclassifyr_known_slab()`).
 6. **Occupation error beyond linkage, and the same wrong man** — clerk
    miscoding and dependent link failures, separated by three linked
@@ -111,7 +111,7 @@ head(ving, 3)
 This is the toy counterpart of using the 1940 census's five-year
 migration question to discipline the operator in real work. We pass it
 as `T2`, so the second measure's model becomes "a correct link observes
-a draw from true migration; a failed link draws from the phantom law."
+a draw from true migration; a failed link draws from the rival law."
 
 ```{r fit-unconditional}
 fit_u <- misclassifyr_rl_em(tab, J = 240, K = 240,
@@ -125,18 +125,18 @@ The fit converges — and it is **badly wrong**, understating both
 false-link rates several times over. That failure is deliberate, and it
 is the next lesson.
 
-## 3. Local phantoms: why the kingdom-wide model fails
+## 3. Local rivals: why the kingdom-wide model fails
 
 The model just fitted assumes a failed link draws from one kingdom-wide
-phantom law. But the intendance's clerks searched only their own
+rival law. But the intendance's clerks searched only their own
 generalite's registers, so a failed link draws from the man's **birth
-province's** roll. A phantom from your own province often lands near
+province's** roll. A rival from your own province often lands near
 home — sometimes in your very parish — and the kingdom-wide model reads
 those as correct links. The estimated rate collapses.
 
 The remedy is to condition the error model the way the linking process
 was actually run: split by birth province, let each cell carry its own
-phantom law, and share the false-link rates across cells — which is
+rival law, and share the false-link rates across cells — which is
 what `misclassifyr_rl_em_stacked()` does.
 
 ```{r fit-stacked}
@@ -154,10 +154,10 @@ ancienregime_truth$parishes$alpha
 ```
 
 Same data, same estimator family, right conditioning — and the truth
-comes back. The general rule: **condition the phantom law on whatever
+comes back. The general rule: **condition the rival law on whatever
 the linking keys condition on.** In real work the keys are name,
-birthplace, and age; a phantom pool that ignores them is too diffuse,
-phantom draws look like correct links, and the error rate is
+birthplace, and age; a rival pool that ignores them is too diffuse,
+spurious draws look like correct links, and the error rate is
 understated. On this synthetic world the understatement is a factor of
 five; in real linked census data the same mechanism is why unconditional
 estimates should be treated as lower bounds.
@@ -165,6 +165,30 @@ estimates should be treated as lower bounds.
 The corrected migration matrix itself is `fit_s$cells`, one `Pi` per
 province — sparse, support-restricted, and free of the false-link
 smear.
+
+The section in one picture — same data, same estimator family, only the
+conditioning of the rival law differs:
+
+```{r fig-conditioning, echo = FALSE, fig.width = 7, fig.height = 2.6, fig.alt = "Estimated false-link rates under kingdom-wide and province-conditioned rival laws, against the truth"}
+op <- par(mar = c(4, 13, 2, 1))
+est <- rbind(fit_u$alpha, fit_s$alpha)
+tru <- ancienregime_truth$parishes$alpha
+plot(NULL, xlim = c(0, max(tru) * 1.35), ylim = c(0.6, 2.4),
+     yaxt = "n", xlab = "false-link rate", ylab = "")
+axis(2, at = 2:1, labels = c("kingdom-wide rival law",
+                             "rival law by birth province"), las = 1)
+abline(v = tru, lty = 3)
+mtext(c(expression(alpha[1]), expression(alpha[2])), at = tru,
+      side = 3, line = 0.2, cex = 0.9)
+points(est[, 1], 2:1, pch = 16, cex = 1.4)
+points(est[, 2], 2:1, pch = 1,  cex = 1.4)
+legend("right", pch = c(16, 1), bty = "n",
+       legend = c(expression(hat(alpha)[1]), expression(hat(alpha)[2])))
+par(op)
+```
+
+The dotted verticals are the true rates; the diffuse rival law puts both
+estimates near zero, and the conditioned one puts both on the lines.
 
 ## 4. The two-step architecture for very sparse outcomes
 
@@ -200,9 +224,9 @@ round(fit_coarse$alpha, 4)
 The coarse fit collapses almost to zero — *worse* than the parish-level
 fit, not better. The reason is worth a moment: a failed link draws from
 the man's birth province, and most men still live in their birth
-province, so at province resolution the phantom lands on the **same
+province, so at province resolution the rival lands on the **same
 aggregated value as the truth** and the false link becomes literally
-invisible. Coarsening below the resolution of the phantom's locality
+invisible. Coarsening below the resolution of the rival's locality
 does not dilute the problem; it erases the evidence. **Coarsening is
 not conditioning.** The honest coarse step in this world is the stacked
 fit of section 3 — dense enough cells *and* the right conditioning —
@@ -218,10 +242,59 @@ fit_fine <- misclassifyr_rl_em(tab, J = 240, K = 240,
 (Not run here only to keep the vignette quick; it converges in a few
 seconds and its `Pi` matches section 3's.)
 
-## 5. The single-link audit: a known phantom law
+Since the province objects are now on hand, this is the place to draw
+the deliverable. The corrected per-province joints of section 3
+aggregate to a province-to-province flow matrix; beside the naive
+tabulation, the correction visibly strips off-diagonal mass — the
+spurious moves — while leaving the flows that are real:
+
+```{r fig-flows, echo = FALSE, fig.width = 7, fig.height = 3.8, fig.alt = "Naive and corrected province-to-province flow matrices"}
+provs <- ancienregime_truth$provinces
+ab <- abbreviate(provs, 3)
+
+P_naive <- matrix(0, 12, 12)
+agg <- aggregate(list(n = tab$n),
+                 by = list(x = to_prov[tab$X], y = to_prov[tab$Y1]),
+                 FUN = sum)
+P_naive[cbind(agg$x, agg$y)] <- agg$n
+
+P_corr <- matrix(0, 12, 12)
+for (cell in fit_s$cells) {
+  M <- matrix(0, 240, 240)
+  M[cbind(cell$Pi$i, cell$Pi$j)] <- cell$Pi$p
+  A <- rowsum(M, to_prov)
+  A <- t(rowsum(t(A), to_prov))
+  P_corr <- P_corr + cell$N * A
+}
+
+rowcond <- function(P) P / pmax(rowSums(P), 1e-12)
+Rn <- rowcond(P_naive); Rc <- rowcond(P_corr)
+br <- seq(0, 1, length.out = 33)
+cols <- gray.colors(32, start = 0.97, end = 0.1)
+op <- par(mfrow = c(1, 2), mar = c(4.2, 4.2, 2, 0.6))
+for (nm in c("naive", "corrected")) {
+  M <- if (nm == "naive") Rn else Rc
+  image(1:12, 1:12, t(M)[, 12:1], breaks = br, col = cols,
+        axes = FALSE, xlab = "province in 1770", ylab = "province in 1750",
+        main = nm)
+  axis(1, at = 1:12, labels = ab, las = 2, cex.axis = 0.6, tick = FALSE)
+  axis(2, at = 12:1, labels = ab, las = 1, cex.axis = 0.6, tick = FALSE)
+  box()
+}
+par(op)
+mv <- c(naive = 1 - sum(diag(Rn) * rowSums(P_naive) / sum(P_naive)),
+        corrected = 1 - sum(diag(Rc) * rowSums(P_corr) / sum(P_corr)))
+```
+
+Rows are 1750 provinces, columns 1770, both row-normalized; the
+population-weighted share off the diagonal falls from
+`r round(mv["naive"], 3)` in the naive tabulation to
+`r round(mv["corrected"], 3)` after correction.
+
+## 5. The single-link audit: a known rival law
 
 Everything so far used two linked measures. Sometimes there is only
-one — but if the phantom law is *known* rather than estimated, one
+one — but if the rival law is *known* rather than estimated, one
 measure still identifies the false-link rate. In this world the rolls
 are public: the intendant of Bretagne can put his linked 1750-to-1780
 sample next to the full 1780 roll of his own generalite, whose margin
@@ -258,7 +331,7 @@ single-link estimates with an operator-sensitivity band (refit under a
 perturbed operator) rather than as a point.
 
 This is the design to reach for when a census asks its own migration
-question: the operator comes from the question, the phantom law from
+question: the operator comes from the question, the rival law from
 the full count, and the single link's error rate falls out. It is also
 a useful *audit* of the two-link estimates, since it rests on different
 data.
@@ -330,7 +403,7 @@ tr <- ancienregime_truth$lineages
 fit_3 <- misclassifyr_traj_em(
   tab3, J = 6,
   rho    = tr$occupation_slab,   # the latent slab failed links draw from
-  rho_f  = tr$father_margin,     # the father's link's phantom law
+  rho_f  = tr$father_margin,     # the father's link's rival law
   kernel = tr$kernel,            # the clerk's adjacent-rung confusion
   dstep  = c(1, 1),              # one decade between consecutive measures
   dstep_f = 1,                   # the dixieme sits one step before the base
@@ -346,10 +419,35 @@ Every parameter comes back: the three marginal false-link rates, the
 share `s` of failures that hit the same rival, the clerk's `mu`, and
 the father's own link rate `alpha_f` — the last identified because the
 father, too, is measured twice. Note what the estimator was *given*:
-the phantom laws (`rho`, `rho_f`) as data, derived here from the
+the rival laws (`rho`, `rho_f`) as data, derived here from the
 world's registers, exactly as real work derives them from full-count
 margins — and note the docstring's warning that with a `kernel` these
 are laws over the *latent* class.
+
+```{r fig-traj-params, echo = FALSE, fig.width = 7, fig.height = 3, fig.alt = "Trajectory-model parameter estimates against their true values, with the blind two-measure fit for contrast"}
+op <- par(mar = c(4, 7, 2, 1))
+labs <- c(expression(alpha[1]), expression(alpha[2]), expression(alpha[3]),
+          expression(s), expression(mu), expression(alpha[f]))
+est <- c(fit_3$alpha, fit_3$s, fit_3$mu[1], fit_3$alpha_f)
+tru <- c(tr$alpha, tr$s, tr$mu, tr$alpha_f)
+y <- 6:1
+plot(NULL, xlim = c(0, max(tru, est, fit_2$alpha) * 1.15),
+     ylim = c(0.5, 6.5), yaxt = "n", ylab = "", xlab = "value")
+axis(2, at = y, labels = labs, las = 1)
+segments(tru, y - 0.28, tru, y + 0.28, lwd = 2)
+points(est, y, pch = 16, cex = 1.3)
+points(fit_2$alpha, 6:5, pch = 4, cex = 1.2)
+legend("bottomright", bty = "n",
+       pch = c(16, NA, 4), lty = c(NA, 1, NA), lwd = c(NA, 2, NA),
+       legend = c("trajectory estimate", "truth",
+                  "blind two-measure fit"))
+par(op)
+```
+
+The vertical bars are the truth, the dots the trajectory estimates, and
+the crosses the two-measure fit of the previous chunk — sitting far off
+the bars on the two rates it can see, having absorbed the clerk and the
+career dynamics it cannot.
 
 The two practical warnings from the estimator's documentation bear
 repeating. The `(alpha, s)` block sits on a likelihood plateau, so use
@@ -387,11 +485,107 @@ c(naive     = slope_from_joint(Pi_naive),
   truth     = slope_from_joint(Pi_true)) |> round(3)
 ```
 
+```{r fig-slope, echo = FALSE, fig.width = 6.5, fig.height = 1.9, fig.alt = "Naive, corrected, and true mobility slopes"}
+sl <- c(naive = slope_from_joint(Pi_naive),
+        corrected = slope_from_joint(fit_3$Pi),
+        truth = slope_from_joint(Pi_true))
+op <- par(mar = c(4, 8, 0.5, 1))
+plot(NULL, xlim = range(0, sl) * c(1, 1.15), ylim = c(0.5, 3.5),
+     yaxt = "n", ylab = "", xlab = "father-to-son slope (livres on livres)")
+axis(2, at = 3:1, labels = names(sl), las = 1)
+abline(v = sl["truth"], lty = 3)
+points(sl, 3:1, pch = 16, cex = 1.4)
+par(op)
+```
+
 The naive slope is attenuated — false links put strangers' sons under
 fathers they do not belong to, and the clerk's noise attenuates further
 — and the corrected slope sits on the truth. For delta-method standard
 errors and Monte Carlo confidence sets on slopes like this one, see
 `se_beta_deltamethod()`, `Pi_to_beta()`, and `vignette("inference")`.
+
+## 8. One error process, two outcomes
+
+A link fails or holds once, whatever is read off the linked record. In
+real work the same crosswalk carries a man's county *and* his
+occupation, and fitting the two outcomes separately invites each fit to
+park its own outcome's problems in the shared quantity — the false-link
+rate. `misclassifyr_traj_em_shared()` estimates outcome *views* jointly
+with the linkage component forced equal: one `(alpha, s)` process, one
+`Pi`, `T`, and measurement layer per view.
+
+Here the second view is the intendant's digest: the six classes rolled
+up into three orders, with the kernel and the rival law aggregated to
+match (weighted by the sons' latent class margin, as any honest
+aggregation of a conditional law must be):
+
+```{r shared-views}
+grp <- c(1, 1, 2, 2, 3, 3)                 # six classes into three orders
+m_son <- as.numeric(tr$father_margin %*% tr$Pi)   # sons' latent margin
+
+aggC <- function(M, w) {                    # conditional-law aggregation
+  A <- rowsum(M * w, grp); A <- t(rowsum(t(A), grp)); A / rowSums(A)
+}
+kern3  <- aggC(tr$kernel, m_son)            # the kernel is a conditional law
+rho3   <- as.numeric(rowsum(tr$occupation_slab, grp))   # marginal laws just sum
+rho_f3 <- as.numeric(rowsum(tr$father_margin, grp))
+
+g <- function(v) grp[v]
+tab3c <- aggregate(list(n = tab3$n),
+                   by = list(Y1 = g(tab3$Y1), Y2 = g(tab3$Y2),
+                             Y3 = g(tab3$Y3), X = g(tab3$X),
+                             Xf = g(tab3$Xf)), FUN = sum)
+
+fit_c <- misclassifyr_traj_em(tab3c, J = 3, rho = rho3, rho_f = rho_f3,
+                              kernel = kern3, dstep = c(1, 1),
+                              dstep_f = 1, maxit = 800)
+
+fit_sh <- misclassifyr_traj_em_shared(
+  views = list(
+    classes = list(tab = tab3,  J = 6, rho = tr$occupation_slab,
+                   rho_f = tr$father_margin, kernel = tr$kernel,
+                   dstep = c(1, 1), dstep_f = 1),
+    orders  = list(tab = tab3c, J = 3, rho = rho3, rho_f = rho_f3,
+                   kernel = kern3, dstep = c(1, 1), dstep_f = 1)),
+  maxit = 400)
+
+rbind(`fine alone`   = round(c(fit_3$alpha,  s = fit_3$s), 3),
+      `coarse alone` = round(c(fit_c$alpha,  s = fit_c$s), 3),
+      shared         = round(c(fit_sh$alpha, s = fit_sh$s), 3),
+      truth          = round(c(tr$alpha,     s = tr$s), 3))
+```
+
+```{r fig-shared, echo = FALSE, fig.width = 7, fig.height = 2.8, fig.alt = "Linkage parameters from the fine view, the coarse view, and the shared fit, against the truth"}
+op <- par(mar = c(4, 7, 2, 1))
+labs <- c(expression(alpha[1]), expression(alpha[2]),
+          expression(alpha[3]), expression(s))
+truv <- c(tr$alpha, tr$s)
+E <- rbind(c(fit_3$alpha,  fit_3$s),
+           c(fit_c$alpha,  fit_c$s),
+           c(fit_sh$alpha, fit_sh$s))
+y <- 4:1
+plot(NULL, xlim = c(0, max(truv, E) * 1.2), ylim = c(0.5, 4.5),
+     yaxt = "n", ylab = "", xlab = "value")
+axis(2, at = y, labels = labs, las = 1)
+segments(truv, y - 0.3, truv, y + 0.3, lwd = 2)
+points(E[1, ], y + 0.15, pch = 1,  cex = 1.1)
+points(E[2, ], y - 0.15, pch = 2,  cex = 1.1)
+points(E[3, ], y,        pch = 16, cex = 1.3)
+legend("bottomright", bty = "n", pch = c(1, 2, 16, NA), lty = c(NA, NA, NA, 1),
+       lwd = c(NA, NA, NA, 2),
+       legend = c("fine view alone", "coarse view alone", "shared", "truth"))
+par(op)
+```
+
+Both views alone are serviceable here because both were handed their
+kernels; the shared fit agrees with them and with the truth, on one
+error process instead of two. The force of the constraint shows when a
+view's measurement layer is *incomplete*: whatever that view can no
+longer park in `alpha` is pushed back into its own emission structure,
+where a misspecification is visible, rather than into the linkage rate,
+where it is not. In real work the two views are county and occupation
+read through the same crosswalk, and the shared fit is the answer to
+"the two designs disagree about the same edge."
 
 ## What to take back to real data
 
@@ -404,10 +598,10 @@ Each section above is one lesson, and they compound:
    or the false-link rate will eat true change.
 3. **Estimate the error rate where cells are dense**, then fix it where
    they are sparse.
-4. **Condition the phantom law on the linking keys.** An unconditional
-   phantom pool is too diffuse, and the error rate collapses toward
+4. **Condition the rival law on the linking keys.** An unconditional
+   rival pool is too diffuse, and the error rate collapses toward
    zero. Treat unconditional estimates as lower bounds.
-5. **A known phantom law rescues the single-link design**, and audits
+5. **A known rival law rescues the single-link design**, and audits
    the others.
 6. **Two measures cannot see dependent failures, and a linkage-only
    model turns true dynamics and miscoding into "false links."** The
@@ -416,6 +610,10 @@ Each section above is one lesson, and they compound:
    the rate is not quietly standing in for it.
 7. **The corrected joint, not the error rate, is the deliverable** —
    and it feeds straight into downstream slopes with inference.
+8. **One error process per crosswalk, however many outcomes you read
+   through it.** Fit the views jointly with the linkage component
+   shared, and let each outcome's own measurement layer carry its own
+   noise.
 
 All of it, on a kingdom that never existed, from rolls no clerk ever
 botched.

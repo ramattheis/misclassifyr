@@ -716,7 +716,7 @@ All four `TRUE`: every coordinate reaches the prior.
 There is one more design idea that is less about the shape of $\Delta$ than
 about what you feed it, and it is often the highest-return change available.
 
-Return to the record-linkage slab. A failed link draws a phantom from the
+Return to the record-linkage slab. A failed link draws a rival from the
 pool of candidates the algorithm was choosing among. Which variables that
 pool is restricted on turns out to matter twice over, in opposite-looking
 ways that call for the same fix.
@@ -725,7 +725,7 @@ ways that call for the same fix.
 Linking algorithms typically match on name, birth year, and birthplace, and
 routinely ignore county or parish of *residence*, because people move.
 That makes residence enormously informative about whether a link is real: a
-correctly linked man is usually still somewhere plausible, whereas a phantom
+correctly linked man is usually still somewhere plausible, whereas a rival
 lands wherever the name pool happens to sit. Enriching the outcome with a
 variable the linker never used — pairing occupation with county, say —
 sharpens the contrast between correct and failed links well beyond what
@@ -733,21 +733,21 @@ either variable does alone. You are not adding a control; you are adding a
 dimension along which the error is more visible.
 
 **If the algorithm used a variable, ignoring that is a bias.** Suppose the
-linker *did* match on birthplace. Then a phantom is a same-birthplace
+linker *did* match on birthplace. Then a rival is a same-birthplace
 person, and a $\rho$ estimated from the unconditional distribution of
-birthplace is too diffuse. Phantoms that agree with the truth on birthplace
+birthplace is too diffuse. Rivals that agree with the truth on birthplace
 look like correct links, and $\hat\alpha$ is biased downward.
 
 Both point to the same recipe: split the tabulation by the variable, and
 estimate a **shared** error rate across the resulting cells. That is
 `misclassifyr_rl_em_stacked()`. It takes a list of tabulations, holds
-$\alpha_1, \alpha_2$ common across cells, and lets the phantom distribution
+$\alpha_1, \alpha_2$ common across cells, and lets the rival distribution
 $\rho_c$ and the joint distribution $\Pi_c$ vary freely within each — so the
-error rate is estimated from all the data at once, while the phantom pool is
+error rate is estimated from all the data at once, while the rival pool is
 allowed to be as local as it really is.
 
 Here is the failure it prevents. Four birthplace cells; the linker matched
-on birthplace, so a failed link draws a phantom from the *same* cell:
+on birthplace, so a failed link draws a rival from the *same* cell:
 
 ```{r stacked}
 set.seed(41)
@@ -777,7 +777,7 @@ rbind(pooled  = pooled$alpha,
       stacked = stacked$alpha) |> round(3)
 ```
 
-The pooled estimator, which implicitly treats the phantom pool as the whole
+The pooled estimator, which implicitly treats the rival pool as the whole
 country, understates the false-link rate by about a quarter of its value.
 The stacked estimator recovers it. If you then use $\hat\alpha$ to correct a
 downstream coefficient, that error propagates directly into the correction.

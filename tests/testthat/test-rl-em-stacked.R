@@ -1,17 +1,17 @@
-# Stacked shared-alpha EM: conditional phantom draws (the Mattheis
+# Stacked shared-alpha EM: conditional rival draws (the Mattheis
 # critique): if failed links draw from the candidate pool matching the
 # linking keys (e.g. same birthplace), an unconditional slab is too
-# diffuse - phantoms look like correct links and pooled alpha-hat is
+# diffuse - rivals look like correct links and pooled alpha-hat is
 # biased down. Cell-conditional estimation with shared alpha fixes it.
 
-test_that("pooled EM understates alpha under conditional phantoms; stacked recovers it", {
+test_that("pooled EM understates alpha under conditional rivals; stacked recovers it", {
   set.seed(41)
   C = 6; J = 30; N = 3e5; a1 = 0.25; a2 = 0.25
   cell = sample.int(C, N, replace = TRUE)
   base = (cell - 1) * 5
   xi = base + sample.int(5, N, replace = TRUE)
   j  = ifelse(runif(N) < 0.8, xi, base + sample.int(5, N, replace = TRUE))
-  # Phantom draws are CELL-CONDITIONAL (same 5 home counties)
+  # Rival draws are CELL-CONDITIONAL (same 5 home counties)
   y1 = ifelse(runif(N) < a1, base + sample.int(5, N, replace = TRUE), j)
   y2 = ifelse(runif(N) < a2, base + sample.int(5, N, replace = TRUE), j)
   df = data.frame(cell = cell, X = xi, Y1 = y1, Y2 = y2)
